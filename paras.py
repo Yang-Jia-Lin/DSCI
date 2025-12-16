@@ -6,12 +6,12 @@ import pandas as pd
 
 # Path
 MODEL_NAME = "Resnet50"
-RATE_CSV_PATH = f"E:\Coding\Python\\2025-0710 InfoCom\INFOCOM_simulate\Data\\{MODEL_NAME}_rates.csv"
-ACC_CSV_PATH = f"E:\Coding\Python\\2025-0710 InfoCom\INFOCOM_simulate\Data\\{MODEL_NAME}_accs.csv"
-LAYER_CSV_PATH = f"E:\Coding\Python\\2025-0710 InfoCom\INFOCOM_simulate\Data\\{MODEL_NAME}_layer_stats.csv"
-RESULT_GA_PATH = "E:\Coding\Python\\2025-0710 InfoCom\INFOCOM_simulate\Result\GA"
-RESULT_RL_PATH = "E:\Coding\Python\\2025-0710 InfoCom\INFOCOM_simulate\Result\RL"
-RESULT_PPO_PATH = "E:\Coding\Python\\2025-0710 InfoCom\INFOCOM_simulate\Result\PPO"
+RATE_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_rates.csv"
+ACC_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_accs.csv"
+LAYER_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_layer_stats.csv"
+RESULT_GA_PATH = "D:/Coding/Python/DSCI/Result/GA"
+RESULT_RL_PATH = "D:/Coding/Python/DSCI/Result/RL"
+RESULT_PPO_PATH = "D:/Coding/Python/DSCI/Result/PPO"
 
 # User
 NUM_USERS = 10
@@ -21,7 +21,7 @@ NUM_LAYERS = 128
 EARLY_EXIT_LAYERS = [57, 103] # 1 9 12 18 9 1
 NUM_EXIT_LAYERS = len(EARLY_EXIT_LAYERS)
 
-csv_path = Path(r"E:\Coding\Python\\2025-0710 InfoCom\INFOCOM_simulate\Data") / f"{MODEL_NAME}_layer_stats.csv"
+csv_path = Path(f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_layer_stats.csv")
 df = pd.read_csv(csv_path)
 DATA_SIZE_LAYERS = df["num_bytes"].astype(int).tolist()
 COMPUTE_SIZE_LAYERS = df["approx_flops"].astype(int).tolist()
