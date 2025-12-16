@@ -16,3 +16,4 @@ venv/
 
 # 忽略 pycharm 文件
 .idea/
+__pycache__
