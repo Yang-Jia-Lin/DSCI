@@ -12,6 +12,7 @@ LAYER_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_layer_stats.csv"
 RESULT_GA_PATH = "D:/Coding/Python/DSCI/Result/GA"
 RESULT_RL_PATH = "D:/Coding/Python/DSCI/Result/RL"
 RESULT_PPO_PATH = "D:/Coding/Python/DSCI/Result/PPO"
+RESULT_BF_PATH = "D:/Coding/Python/DSCI/Result/BF"
 
 # User
 NUM_USERS = 10

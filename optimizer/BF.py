@@ -1,230 +1,402 @@
+# optimizer/BF.py
 import numpy as np
-import itertools
-from objective.objective import objective
+import math
+from typing import Tuple, Dict, Any, List
+
 from objective.compute_P import compute_layer_exit_probs
+from objective.compute_accuracy import compute_expected_accuracy
+from objective.objective import objective
 
 
-def optimize_BF(paras, max_iter=5, y_step=0.05):
+def _generate_all_valid_X_rows(m: int) -> np.ndarray:
     """
-    Brute Force Solver using Block Coordinate Descent.
-
-    Args:
-        paras: Parameters object.
-        max_iter: Number of BCD iterations (rounds).
-        y_step: Step size for Y grid search (e.g., 0.05 or 0.01).
-                0.05 = 20*20 = 400 combinations per X.
-                0.01 = 100*100 = 10000 combinations per X.
+    Generate all valid X rows with exactly two 1s (C(m,2)).
+    Return: (K, m) int8
     """
+    rows = []
+    for a in range(m):
+        for b in range(a + 1, m):
+            x = np.zeros(m, dtype=np.int8)
+            x[a] = 1
+            x[b] = 1
+            rows.append(x)
+    return np.stack(rows, axis=0)
+
+
+def _get_cut_points_from_xrow(x_row: np.ndarray) -> Tuple[int, int]:
+    """Return sorted indices of ones. Assumes exactly two ones."""
+    idx = np.where(x_row > 0.5)[0]
+    if len(idx) != 2:
+        raise ValueError(f"X row must contain exactly two 1s, got {len(idx)}")
+    return int(idx[0]), int(idx[1])
+
+
+def _tau_grid(step: float = 0.01) -> np.ndarray:
+    """0.00~1.00 with fixed 2 decimals."""
+    k = int(round(1.0 / step))
+    return np.array([round(i * step, 2) for i in range(k + 1)], dtype=np.float64)
+
+
+def _build_y_row(m: int, exit_layers: Tuple[int, int], t1: float, t2: float) -> np.ndarray:
+    """Other layers fixed to 1; only two exit layers are adjustable."""
+    y = np.ones(m, dtype=np.float64)
+    e1, e2 = exit_layers
+    y[e1] = t1
+    y[e2] = t2
+    return y
+
+
+def _precompute_P_acc_cache(paras, step: float = 0.01) -> Dict[Tuple[int, int], Dict[str, Any]]:
+    """
+    Cache mapping (i1,i2) -> {P_row, acc_scalar, PS, PCS}
+    Where:
+      P_row: (m,)
+      acc_scalar: float
+      PS[j] = sum_{k<j} P[k]  (j=0..m)
+      PCS[j] = sum_{k<j} P[k] * prefC[k] (j=0..m)
+    """
+    m = paras.m
+    exit_layers = tuple(paras.E)
+    assert len(exit_layers) == 2, "This BF expects exactly 2 early-exit layers."
+
+    C = np.asarray(paras.C, dtype=np.float64)
+    prefC = np.zeros(m + 1, dtype=np.float64)
+    prefC[1:] = np.cumsum(C[:m], dtype=np.float64)
+
+    grid = _tau_grid(step)
+    cache: Dict[Tuple[int, int], Dict[str, Any]] = {}
+    cache[("prefC", "prefC")] = {"prefC": prefC, "grid": grid}
+
+    # Compute using shape (1,m) if possible; fallback to (n,m).
+    def _compute_for_yrow(yrow: np.ndarray) -> Tuple[np.ndarray, float]:
+        try:
+            Y1 = yrow.reshape(1, m)
+            P = compute_layer_exit_probs(Y1, paras)
+            acc_vec = compute_expected_accuracy(Y1, P, paras)
+            return np.asarray(P[0], dtype=np.float64), float(acc_vec[0])
+        except Exception:
+            YN = np.tile(yrow.reshape(1, m), (paras.n, 1))
+            P = compute_layer_exit_probs(YN, paras)
+            acc_vec = compute_expected_accuracy(YN, P, paras)
+            return np.asarray(P[0], dtype=np.float64), float(acc_vec[0])
+
+    # Full cache: 101*101 = 10201 entries (one-time cost)
+    for i1, t1 in enumerate(grid):
+        for i2, t2 in enumerate(grid):
+            yrow = _build_y_row(m, exit_layers, t1, t2)
+            P_row, acc_scalar = _compute_for_yrow(yrow)
+
+            PS = np.zeros(m + 1, dtype=np.float64)
+            PS[1:] = np.cumsum(P_row, dtype=np.float64)
+
+            PCS = np.zeros(m + 1, dtype=np.float64)
+            PCS[1:] = np.cumsum(P_row * prefC[:m], dtype=np.float64)
+
+            cache[(i1, i2)] = {
+                "P": P_row,
+                "acc": acc_scalar,
+                "PS": PS,
+                "PCS": PCS,
+            }
+
+    return cache
+
+
+def _compute_user_latency_consts_and_work(
+    paras,
+    i: int,
+    cut0: int,
+    cut1: int,
+    PS: np.ndarray,
+    PCS: np.ndarray,
+    prefC: np.ndarray,
+) -> Tuple[float, float, float]:
+    """
+    Return (const_i, b_i, c_i) s.t.
+      latency_i = const_i + b_i / f_e_i + c_i / f_c_i
+    with f_e_i, f_c_i in GHz (matching your code which multiplies by 1e9).
+    """
+    m = paras.m
+
+    # local part: sum_{j=0..cut0} P[j]*prefC[j] / (f_u*1e9)
+    f_u = float(np.asarray(paras.F_u).reshape(-1)[i])  # GHz
+    local_work = PCS[cut0 + 1]  # sum_{j<cut0+1} P[j]*prefC[j]
+    local_delay = local_work / (f_u * 1e9)
+
+    # edge work: sum_{j=cut0..cut1-1} P[j]*(prefC[j]-prefC[cut0]) / 1e9
+    edge_work = (PCS[cut1] - PCS[cut0]) - prefC[cut0] * (PS[cut1] - PS[cut0])
+    b_i = max(0.0, edge_work / 1e9)
+
+    # cloud work: sum_{j=cut1..m-1} P[j]*(prefC[j]-prefC[cut1]) / 1e9
+    cloud_work = (PCS[m] - PCS[cut1]) - prefC[cut1] * (PS[m] - PS[cut1])
+    c_i = max(0.0, cloud_work / 1e9)
+
+    # u2e delay: d1 / R_i
+    D = np.asarray(paras.D, dtype=np.float64).reshape(-1)
+    d1 = float(D[cut0])
+    h_i = float(np.asarray(paras.H_u).reshape(-1)[i])
+    R_i = (float(paras.b_e) * 1e6) * math.log2(1.0 + (h_i * float(paras.G)) / float(paras.delta))
+    u2e = d1 / R_i
+
+    # e2c delay: d2 / (b_c*1e6)
+    d2 = float(D[cut1])
+    e2c = d2 / (float(paras.b_c) * 1e6)
+
+    const_i = local_delay + u2e + e2c
+    return const_i, b_i, c_i
+
+
+def _solve_F_sqrt_allocation(b_vec: np.ndarray, c_vec: np.ndarray, paras) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Closed-form convex optimum for:
+      minimize sum b_i/f_e_i s.t. sum f_e_i <= f_e_max, f_e_i>=0
+    and similarly for cloud.
+    """
+    b = np.clip(b_vec.astype(np.float64), 0.0, None)
+    c = np.clip(c_vec.astype(np.float64), 0.0, None)
+
+    sb = np.sqrt(b)
+    sc = np.sqrt(c)
+
+    denom_b = float(np.sum(sb))
+    denom_c = float(np.sum(sc))
+
+    if denom_b > 0:
+        F_e = float(paras.f_e_max) * sb / denom_b
+    else:
+        F_e = np.zeros_like(sb)
+
+    if denom_c > 0:
+        F_c = float(paras.f_c_max) * sc / denom_c
+    else:
+        F_c = np.zeros_like(sc)
+
+    return F_e.reshape(-1, 1), F_c.reshape(-1, 1)
+
+
+def _safe_latency_sum(const_vec: np.ndarray, b_vec: np.ndarray, c_vec: np.ndarray, F_e: np.ndarray, F_c: np.ndarray) -> float:
+    """
+    latency = sum const + sum b_i/f_e_i + sum c_i/f_c_i
+    with safe division (no divide-by-zero warnings, no NaNs).
+    """
+    fe = F_e.reshape(-1).astype(np.float64)
+    fc = F_c.reshape(-1).astype(np.float64)
+
+    b = b_vec.astype(np.float64)
+    c = c_vec.astype(np.float64)
+
+    edge_term = np.divide(b, fe, out=np.zeros_like(b), where=fe > 0)
+    cloud_term = np.divide(c, fc, out=np.zeros_like(c), where=fc > 0)
+
+    lat = float(np.sum(const_vec) + np.sum(edge_term) + np.sum(cloud_term))
+    return lat
+
+
+def optimize_BF(
+    paras=None,
+    max_iter: int = 10,
+    restarts: int = 3,
+    threshold_step: float = 0.01,
+    tol: float = 1e-6,
+    verbose: bool = True,
+):
+    """
+    Simple BCD + local brute force baseline.
+    - No dual variables, no step-size tuning.
+    - Each user update: brute force over all X rows (C(m,2)) and two-exit thresholds (10201).
+    - Evaluate global objective using the SAME form: alpha*sum(acc) - beta*sum(latency)
+      where latency is computed from (const + b/f_e + c/f_c) to avoid calling objective() 10^8 times.
+
+    Returns:
+      best_val, best_sol=(X, Y, F_e, F_c), history(list of best values per outer iter)
+    """
+    if paras is None:
+        from __main__ import paras as _paras
+        paras = _paras
+
     n, m = paras.n, paras.m
+    exit_layers = tuple(paras.E)
+    assert len(exit_layers) == 2, "This BF implementation assumes exactly 2 early-exit layers."
+    e1, e2 = exit_layers
 
-    # --- 1. Initialization ---
-    # Randomly initialize valid X and Y
-    # X: 0-1 matrix, we start with all zeros (all local) or random valid
-    X = np.zeros((n, m))
-    # Y: Continuous 0-1, start with 0.5
-    Y = np.ones((n, m)) * 0.5
-    # Initialize F with equal allocation
-    F_e = np.ones((n, 1)) * (paras.f_e_max / n)
-    F_c = np.ones((n, 1)) * (paras.f_c_max / n)
+    # Precompute threshold cache: P, acc, PS, PCS for every (t1,t2)
+    cache = _precompute_P_acc_cache(paras, step=threshold_step)
+    prefC = cache[("prefC", "prefC")]["prefC"]
+    grid = cache[("prefC", "prefC")]["grid"]
 
-    # Find the indices of the early exit layers (assuming 2 exits as described)
-    # If paras.E is a list of booleans or indices, convert to indices
-    exit_indices = [i for i, is_exit in enumerate(paras.E) if is_exit]
-    # If explicit indices are not in paras, assuming standard 2-exit structure for now:
-    if len(exit_indices) < 2:
-        # Fallback based on your snippet "RL_Y_opt[:,[57,103]]"
-        exit_indices = [57, 103]
-        print(f"Warning: Using hardcoded exit indices {exit_indices} for BF.")
+    # Precompute all X candidates
+    X_candidates = _generate_all_valid_X_rows(m)  # (K,m)
+    K = X_candidates.shape[0]
 
-    # Pre-calculate all valid X combinations (Cut points)
-    # A valid X row has at most 2 ones.
-    # Logic: 0 ones (Local only), 1 one (Local->Edge or Local->Cloud?), 2 ones (Local->Edge->Cloud)
-    # We represent state by cut locations (k1, k2).
-    valid_x_rows = generate_all_valid_x_rows(m)
+    best_overall_val = -float("inf")
+    best_overall_sol = None
+    best_overall_hist: List[float] = []
 
-    # Pre-calculate all valid Y pairs (Grid Search)
-    y_values = np.arange(0, 1.0 + y_step / 2, y_step)  # e.g. [0.0, 0.05, ..., 1.0]
-    valid_y_pairs = list(itertools.product(y_values, repeat=len(exit_indices)))
+    rng = np.random.default_rng()
 
-    best_global_val = -np.inf
-    history = []
+    for r in range(restarts):
+        # ---- 1) Random init ----
+        X = np.zeros((n, m), dtype=np.int8)
+        Y = np.ones((n, m), dtype=np.float64)
 
-    print(f"--- Starting BF Optimization (BCD) ---")
-    print(f"Users: {n}, Layers: {m}, X_candidates: {len(valid_x_rows)}, Y_pairs: {len(valid_y_pairs)}")
+        # Random X per user
+        idxs = rng.integers(low=0, high=K, size=n)
+        for i in range(n):
+            X[i] = X_candidates[idxs[i]]
 
-    # --- 2. BCD Loop ---
-    for it in range(max_iter):
-        improved_this_round = False
+        # Random thresholds per user (two exits)
+        t_idx = rng.integers(low=0, high=len(grid), size=(n, 2))
+        for i in range(n):
+            Y[i, e1] = grid[t_idx[i, 0]]
+            Y[i, e2] = grid[t_idx[i, 1]]
 
-        # Shuffle update order to prevent bias
-        user_order = np.random.permutation(n)
+        # Precompute per-user (const, b, c, acc) for current state
+        const_vec = np.zeros(n, dtype=np.float64)
+        b_vec = np.zeros(n, dtype=np.float64)
+        c_vec = np.zeros(n, dtype=np.float64)
+        acc_vec = np.zeros(n, dtype=np.float64)
 
-        for u in user_order:
+        # Also store current tau indices per user for quick cache lookup
+        tau_idx_cur = [(int(t_idx[i, 0]), int(t_idx[i, 1])) for i in range(n)]
 
-            # Current best for this user
-            current_user_best_val = -np.inf
-            current_user_best_config = None  # (x_row, y_row)
+        for i in range(n):
+            i1, i2 = tau_idx_cur[i]
+            PS = cache[(i1, i2)]["PS"]
+            PCS = cache[(i1, i2)]["PCS"]
+            acc_vec[i] = cache[(i1, i2)]["acc"]
 
-            # Store original state to revert if needed (though we usually update greedily)
-            # original_X_row = X[u].copy()
-            # original_Y_row = Y[u].copy()
+            cut0, cut1 = _get_cut_points_from_xrow(X[i])
+            const_i, b_i, c_i = _compute_user_latency_consts_and_work(paras, i, cut0, cut1, PS, PCS, prefC)
+            const_vec[i], b_vec[i], c_vec[i] = const_i, b_i, c_i
 
-            # --- A. Iterate over all valid X structures ---
-            for x_row_cand in valid_x_rows:
+        # Evaluate initial objective
+        F_e, F_c = _solve_F_sqrt_allocation(b_vec, c_vec, paras)
+        lat = _safe_latency_sum(const_vec, b_vec, c_vec, F_e, F_c)
+        val = float(paras.alpha * np.sum(acc_vec) - paras.beta * lat)
 
-                # --- B. Iterate over all Y grid points ---
-                for y_pair in valid_y_pairs:
-                    # Construct Candidate Y Row
-                    y_row_cand = np.ones(m)  # Default 1.0 (pass through)
-                    for idx, val in zip(exit_indices, y_pair):
-                        y_row_cand[idx] = val
+        # safety: avoid NaN poisoning
+        if not np.isfinite(val):
+            # restart this run
+            if verbose:
+                print(f"[BF-BCD] restart={r+1}/{restarts} init_obj is not finite, restarting.")
+            continue
 
-                    # Temporarily update Global Matrices to calculate Resource Allocation
-                    X[u] = x_row_cand
-                    Y[u] = y_row_cand
+        hist = [val]
 
-                    # --- C. Analytical Solution for F ---
-                    # Based on current X and Y, calculate optimal F_e, F_c for ALL users
-                    # This is fast because it's a closed-form formula
-                    F_e_opt, F_c_opt = solve_optimal_F_analytical(X, Y, paras)
+        if verbose:
+            print(f"[BF-BCD] restart={r+1}/{restarts} init_obj={val:.6f}")
 
-                    # --- D. Evaluate Objective ---
-                    val = objective(X, Y, F_e_opt, F_c_opt, paras)
+        # ---- 2) BCD iterations ----
+        for it in range(max_iter):
+            improved_any = False
+            order = rng.permutation(n)
 
-                    if val > current_user_best_val:
-                        current_user_best_val = val
-                        current_user_best_config = (x_row_cand.copy(), y_row_cand.copy())
+            for u in order:
+                # Save current user state
+                x_old = X[u].copy()
+                y_old = Y[u].copy()
+                const_old, b_old, c_old, acc_old = const_vec[u], b_vec[u], c_vec[u], acc_vec[u]
+                i1_old, i2_old = tau_idx_cur[u]
 
-            # Update Global State for User u with the best found locally
-            if current_user_best_val > best_global_val:  # Check against global best just for tracking
-                pass
+                best_local_val = val
+                best_local_x = x_old
+                best_local_y = y_old
+                best_local_const = const_old
+                best_local_b = b_old
+                best_local_c = c_old
+                best_local_acc = acc_old
+                best_local_tau = (i1_old, i2_old)
 
-                # Apply the best local move to the global state
-            X[u] = current_user_best_config[0]
-            Y[u] = current_user_best_config[1]
-            # Update F to match the new X, Y
-            F_e, F_c = solve_optimal_F_analytical(X, Y, paras)
-            print(f"第{it}轮，第{user_order}个用户：{current_user_best_val}")
+                # Brute force this user's X and two thresholds
+                for k in range(K):
+                    x_cand = X_candidates[k]
+                    cut0, cut1 = _get_cut_points_from_xrow(x_cand)
 
-        # End of Round Evaluation
-        current_global_val = objective(X, Y, F_e, F_c, paras)
-        history.append(current_global_val)
+                    for i1 in range(len(grid)):
+                        for i2 in range(len(grid)):
+                            PS = cache[(i1, i2)]["PS"]
+                            PCS = cache[(i1, i2)]["PCS"]
+                            acc_u = cache[(i1, i2)]["acc"]
 
-        print(f"Round {it + 1}/{max_iter} Best Obj: {current_global_val:.5f}")
+                            const_u, b_u, c_u = _compute_user_latency_consts_and_work(
+                                paras, u, cut0, cut1, PS, PCS, prefC
+                            )
 
-        if current_global_val > best_global_val + 1e-6:
-            best_global_val = current_global_val
-            improved_this_round = True
+                            # Update vectors (only user u changes)
+                            const_tmp = const_vec.copy()
+                            b_tmp = b_vec.copy()
+                            c_tmp = c_vec.copy()
+                            acc_tmp = acc_vec.copy()
 
-        if not improved_this_round:
-            print("Converged.")
-            break
+                            const_tmp[u] = const_u
+                            b_tmp[u] = b_u
+                            c_tmp[u] = c_u
+                            acc_tmp[u] = acc_u
 
-    return best_global_val, (X, Y, F_e, F_c), history
+                            # Solve optimal F analytically
+                            F_e_tmp, F_c_tmp = _solve_F_sqrt_allocation(b_tmp, c_tmp, paras)
+                            lat_tmp = _safe_latency_sum(const_tmp, b_tmp, c_tmp, F_e_tmp, F_c_tmp)
 
+                            val_tmp = float(paras.alpha * np.sum(acc_tmp) - paras.beta * lat_tmp)
 
-def generate_all_valid_x_rows(m):
-    """
-    Generates all valid X vectors (size m).
-    Constraints: At most 2 ones.
-    1 means 'offload to next stage'.
-    Sequence: Local -> Edge -> Cloud.
-    """
-    candidates = []
+                            # Skip bad numerical cases
+                            if not np.isfinite(val_tmp):
+                                continue
 
-    # Case 1: All Zeros (All Local Computing)
-    candidates.append(np.zeros(m))
+                            if val_tmp > best_local_val + tol:
+                                best_local_val = val_tmp
+                                best_local_x = x_cand.copy()
 
-    # Case 2: One '1' at layer k (Local [0,k] -> Edge [k+1, m])
-    # Or Local -> Cloud? Usually assumes sequential Local->Edge->Cloud
-    # Assuming X[k]=1 means cut after layer k.
-    for k in range(m):
-        x = np.zeros(m)
-        x[k] = 1
-        candidates.append(x)
+                                y_cand = np.ones(m, dtype=np.float64)
+                                y_cand[e1] = grid[i1]
+                                y_cand[e2] = grid[i2]
+                                best_local_y = y_cand
 
-    # Case 3: Two '1's at k1, k2 (Local -> Edge -> Cloud)
-    for k1 in range(m):
-        for k2 in range(k1 + 1, m):
-            x = np.zeros(m)
-            x[k1] = 1
-            x[k2] = 1
-            candidates.append(x)
+                                best_local_const = const_u
+                                best_local_b = b_u
+                                best_local_c = c_u
+                                best_local_acc = acc_u
+                                best_local_tau = (i1, i2)
 
-    return candidates
+                # Apply best update for user u
+                if best_local_val > val + tol:
+                    improved_any = True
+                    val = best_local_val
 
+                    X[u] = best_local_x
+                    Y[u] = best_local_y
+                    const_vec[u] = best_local_const
+                    b_vec[u] = best_local_b
+                    c_vec[u] = best_local_c
+                    acc_vec[u] = best_local_acc
+                    tau_idx_cur[u] = best_local_tau
 
-def solve_optimal_F_analytical(X, Y, paras):
-    """
-    Calculates Optimal F_e and F_c using Closed-form solution (Sqrt Law).
-    Objective part related to F: Min sum(W_i / F_i)
-    Constraint: sum(F_i) <= F_max
-    Solution: F_i propto sqrt(W_i)
-    """
-    n, m = X.shape
+                else:
+                    # keep old
+                    X[u] = x_old
+                    Y[u] = y_old
+                    const_vec[u], b_vec[u], c_vec[u], acc_vec[u] = const_old, b_old, c_old, acc_old
+                    tau_idx_cur[u] = (i1_old, i2_old)
 
-    # 1. Calculate Expected Workload (Compute Cycles) for Edge and Cloud
-    # We need to replicate the logic of how much data flows to Edge vs Cloud
-    # This depends on X (partition) and Y (early exit probs)
+            hist.append(val)
+            if verbose:
+                print(f"[BF-BCD] restart={r+1} iter={it+1}/{max_iter} obj={val:.6f}")
 
-    # Calculate Probabilities of reaching each layer
-    # P[u, l] is prob that user u executes layer l
-    P = compute_layer_exit_probs(Y, paras)
+            if not improved_any:
+                if verbose:
+                    print(f"[BF-BCD] restart={r+1} converged (no improvement).")
+                break
 
-    W_edge = np.zeros(n)
-    W_cloud = np.zeros(n)
+        # ---- 3) Final primal evaluation using your original objective() for safety ----
+        F_e, F_c = _solve_F_sqrt_allocation(b_vec, c_vec, paras)
+        val_check = float(objective(X.astype(float), Y, F_e, F_c, paras))
 
-    # Parse X to find Edge and Cloud layers for each user
-    for u in range(n):
-        cuts = np.where(X[u] == 1)[0]
+        if verbose:
+            print(f"[BF-BCD] restart={r+1} final_obj(check)={val_check:.6f}")
 
-        edge_start, edge_end = m, m  # Default: No Edge
-        cloud_start, cloud_end = m, m  # Default: No Cloud
+        if val_check > best_overall_val:
+            best_overall_val = val_check
+            best_overall_sol = (X.astype(float).copy(), Y.copy(), F_e.copy(), F_c.copy())
+            best_overall_hist = hist
 
-        if len(cuts) == 0:
-            # All Local
-            pass
-        elif len(cuts) == 1:
-            # Local -> Edge (Assuming single cut means rest is Edge, or checking paras logic)
-            # Common assumption: Cut 1 moves to Edge. No second cut means no Cloud.
-            edge_start = cuts[0] + 1
-            edge_end = m
-        elif len(cuts) == 2:
-            # Local -> Edge -> Cloud
-            edge_start = cuts[0] + 1
-            edge_end = cuts[1] + 1  # Edge ends at second cut
-            cloud_start = cuts[1] + 1
-            cloud_end = m
-
-        # Accumulate Workload (Expected Cycles)
-        # paras.C is vector of cycles per layer
-        if edge_start < m:
-            # Vectorized sum for this user segment
-            # W = Sum( P[layer] * Cost[layer] )
-            W_edge[u] = np.sum(P[u, edge_start:edge_end] * paras.C[edge_start:edge_end])
-
-        if cloud_start < m:
-            W_cloud[u] = np.sum(P[u, cloud_start:cloud_end] * paras.C[cloud_start:cloud_end])
-
-    # 2. Apply Square Root Allocation Law
-    # Avoid division by zero if W is 0
-    sqrt_W_edge = np.sqrt(W_edge)
-    sqrt_W_cloud = np.sqrt(W_cloud)
-
-    sum_sqrt_edge = np.sum(sqrt_W_edge)
-    sum_sqrt_cloud = np.sum(sqrt_W_cloud)
-
-    # Calculate F
-    # If sum is 0 (no one uses edge), allocate 0 (or distribute evenly to avoid NaN)
-    if sum_sqrt_edge > 1e-9:
-        F_e = (sqrt_W_edge / sum_sqrt_edge) * paras.f_e_max
-    else:
-        F_e = np.zeros(n)
-
-    if sum_sqrt_cloud > 1e-9:
-        F_c = (sqrt_W_cloud / sum_sqrt_cloud) * paras.f_c_max
-    else:
-        F_c = np.zeros(n)
-
-    # Reshape for consistency (n, 1)
-    return F_e.reshape(n, 1), F_c.reshape(n, 1)
+    return best_overall_val, best_overall_sol, best_overall_hist

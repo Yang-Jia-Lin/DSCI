@@ -1,5 +1,3 @@
-from objective.compute_P import compute_layer_exit_probs
-from objective.compute_latency import compute_total_latency
 from paras import *
 from utils.parsing_data import parsing_rate_and_acc
 from objective.objective import objective
@@ -68,13 +66,8 @@ print(f"objective is {obj}")
 # plot_decisions(PPO_X_opt, PPO_Y_opt, data_name="PPO最优结果示意图", save_dir=Path(RESULT_PPO_PATH))
 
 # Optimize BF
-# y_step=0.05 意味着每个阈值尝试 0, 0.05, 0.1 ... 1.0 (21个点)。
-# 如果速度太慢，可以改为 0.1；如果想更精确，改为 0.01。
-BF_best_val, BF_best_sol, BF_history = optimize_BF(paras, max_iter=5, y_step=0.1)
+BF_best_val, BF_best_sol, BF_history = optimize_BF(paras, max_iter=5, restarts=2, threshold_step=0.1)
 BF_X_opt, BF_Y_opt, BF_F_e_opt, BF_F_c_opt = BF_best_sol
-
-print(f"BF Optimal Value: {BF_best_val}")
-print("BF Latency:", np.sum(compute_total_latency(BF_X_opt, compute_layer_exit_probs(BF_Y_opt, paras), BF_F_e_opt, BF_F_c_opt, paras)))
-# 验证阈值选择
-# 假设 exit_indices 是 [57, 103]
-print("BF Thresholds Sample:", BF_Y_opt[:, [57, 103]][0]) # 打印第一个用户的阈值
+print(BF_Y_opt[:,[57,103]])
+plot_convergence(BF_history, data_name="BF_Convergence_history", save_dir=Path(RESULT_BF_PATH))
+plot_decisions(BF_X_opt, BF_Y_opt, data_name="PPO最优结果示意图", save_dir=Path(RESULT_BF_PATH))
