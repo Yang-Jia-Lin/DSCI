@@ -21,7 +21,7 @@ def compute_expected_accuracy(Y, P, paras):
             if j in paras.E:
                 acc[i, j] = _get_acc(Y[i, j], j, paras.accs)
                 # print(f"第{i}行，第{j}列，阈值为{Y[i,j]}，精度为{acc[i, j]}，退出概率为{P[i,j]}")
-        acc[i, m - 1] = paras.accs[100, m-1]
+        acc[i, m - 1] = paras.accs[100, m-1] / 100.0
         # acc[i, m - 1] = 0.8651
     accuracy = acc * P
     return np.sum(accuracy, axis=1)
