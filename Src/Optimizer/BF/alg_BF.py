@@ -1,18 +1,14 @@
 # Optimizer/alg_BF.py
 import numpy as np
-import math
 from typing import Tuple, Dict, Any, List
 
 from Src.Objective.compute_P import compute_layer_exit_probs
 from Src.Objective.compute_accuracy import compute_expected_accuracy
-from Src.Objective.objective import objective
+from Src.Objective.compute_exit_points import compute_exit_points
+from Src.Objective.compute_latency_user import compute_user_latency
 
 
 def _generate_all_valid_X_rows(m: int) -> np.ndarray:
-    """
-    Generate all valid X rows with exactly two 1s (C(m,2)).
-    Return: (K, m) int8
-    """
     rows = []
     for a in range(m):
         for b in range(a + 1, m):
@@ -23,22 +19,12 @@ def _generate_all_valid_X_rows(m: int) -> np.ndarray:
     return np.stack(rows, axis=0)
 
 
-def _get_cut_points_from_xrow(x_row: np.ndarray) -> Tuple[int, int]:
-    """Return sorted indices of ones. Assumes exactly two ones."""
-    idx = np.where(x_row > 0.5)[0]
-    if len(idx) != 2:
-        raise ValueError(f"X row must contain exactly two 1s, got {len(idx)}")
-    return int(idx[0]), int(idx[1])
-
-
 def _tau_grid(step: float = 0.01) -> np.ndarray:
-    """0.00~1.00 with fixed 2 decimals."""
     k = int(round(1.0 / step))
     return np.array([round(i * step, 2) for i in range(k + 1)], dtype=np.float64)
 
 
 def _build_y_row(m: int, exit_layers: Tuple[int, int], t1: float, t2: float) -> np.ndarray:
-    """Other layers fixed to 1; only two exit layers are adjustable."""
     y = np.ones(m, dtype=np.float64)
     e1, e2 = exit_layers
     y[e1] = t1
@@ -46,150 +32,199 @@ def _build_y_row(m: int, exit_layers: Tuple[int, int], t1: float, t2: float) -> 
     return y
 
 
-def _precompute_P_acc_cache(paras, step: float = 0.01) -> Dict[Tuple[int, int], Dict[str, Any]]:
+def _precompute_cut_points_for_X_candidates(X_candidates: np.ndarray, paras) -> np.ndarray:
     """
-    Cache mapping (i1,i2) -> {P_row, acc_scalar, PS, PCS}
-    Where:
-      P_row: (m,)
-      acc_scalar: float
-      PS[j] = sum_{k<j} P[k]  (j=0..m)
-      PCS[j] = sum_{k<j} P[k] * prefC[k] (j=0..m)
+    对每个 x_row 用你原始的 compute_exit_points() 精确求 cut_points。
+    返回 shape=(K,2) 的 int 数组。
+    """
+    K, m = X_candidates.shape
+    cuts = np.zeros((K, 2), dtype=np.int64)
+    for k in range(K):
+        X1 = X_candidates[k].reshape(1, m).astype(float)
+        cp = compute_exit_points(X1, paras)  # shape (1,2)
+        cuts[k, 0] = int(cp[0][0])
+        cuts[k, 1] = int(cp[0][1])
+    return cuts
+
+
+def _compute_P_acc_for_yrow(yrow: np.ndarray, paras) -> Tuple[np.ndarray, float]:
+    """
+    严格调用你现有 compute_layer_exit_probs / compute_expected_accuracy。
+    为了兼容 paras.n 的实现细节，构造 YN = tile 到 (paras.n,m)，然后取第 0 行。
+    """
+    m = paras.m
+    YN = np.tile(yrow.reshape(1, m), (paras.n, 1))
+    P = compute_layer_exit_probs(YN, paras)
+    acc_vec = compute_expected_accuracy(YN, P, paras)
+    return np.asarray(P[0], dtype=np.float64), float(acc_vec[0])
+
+
+def _precompute_threshold_cache(paras, step: float = 0.01) -> Dict[Tuple[int, int], Dict[str, Any]]:
+    """
+    缓存 (i1,i2) -> {"P_row": (m,), "acc": float}
+    这是“严格等价缓存”，不包含任何 latency 近似/分解。
     """
     m = paras.m
     exit_layers = tuple(paras.E)
-    assert len(exit_layers) == 2, "This BF expects exactly 2 early-exit layers."
-
-    C = np.asarray(paras.C, dtype=np.float64)
-    prefC = np.zeros(m + 1, dtype=np.float64)
-    prefC[1:] = np.cumsum(C[:m], dtype=np.float64)
+    assert len(exit_layers) == 2, "BF assumes exactly 2 early-exit layers."
 
     grid = _tau_grid(step)
     cache: Dict[Tuple[int, int], Dict[str, Any]] = {}
-    cache[("prefC", "prefC")] = {"prefC": prefC, "grid": grid}
+    cache[("grid", "grid")] = {"grid": grid}
 
-    # Compute using shape (1,m) if possible; fallback to (n,m).
-    def _compute_for_yrow(yrow: np.ndarray) -> Tuple[np.ndarray, float]:
-        try:
-            Y1 = yrow.reshape(1, m)
-            P = compute_layer_exit_probs(Y1, paras)
-            acc_vec = compute_expected_accuracy(Y1, P, paras)
-            return np.asarray(P[0], dtype=np.float64), float(acc_vec[0])
-        except Exception:
-            YN = np.tile(yrow.reshape(1, m), (paras.n, 1))
-            P = compute_layer_exit_probs(YN, paras)
-            acc_vec = compute_expected_accuracy(YN, P, paras)
-            return np.asarray(P[0], dtype=np.float64), float(acc_vec[0])
-
-    # Full cache: 101*101 = 10201 entries (one-time cost)
     for i1, t1 in enumerate(grid):
         for i2, t2 in enumerate(grid):
             yrow = _build_y_row(m, exit_layers, t1, t2)
-            P_row, acc_scalar = _compute_for_yrow(yrow)
-
-            PS = np.zeros(m + 1, dtype=np.float64)
-            PS[1:] = np.cumsum(P_row, dtype=np.float64)
-
-            PCS = np.zeros(m + 1, dtype=np.float64)
-            PCS[1:] = np.cumsum(P_row * prefC[:m], dtype=np.float64)
-
-            cache[(i1, i2)] = {
-                "P": P_row,
-                "acc": acc_scalar,
-                "PS": PS,
-                "PCS": PCS,
-            }
+            P_row, acc_u = _compute_P_acc_for_yrow(yrow, paras)
+            cache[(i1, i2)] = {"P_row": P_row, "acc": acc_u}
 
     return cache
 
 
-def _compute_user_latency_consts_and_work(
+def _init_fe_fc(paras, rng: np.random.Generator, eps: float = 1e-12) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    初始化可行 F_e, F_c：非负、sum==budget（严格），避免全 0。
+    """
+    n = paras.n
+    fe = rng.random(n).astype(np.float64) + eps
+    fc = rng.random(n).astype(np.float64) + eps
+
+    fe = fe / float(np.sum(fe)) * float(paras.f_e_max)
+    fc = fc / float(np.sum(fc)) * float(paras.f_c_max)
+
+    return fe.reshape(n, 1), fc.reshape(n, 1)
+
+
+def _objective_from_sums(alpha: float, beta: float, acc_sum: float, lat_sum: float) -> float:
+    return float(alpha * acc_sum - beta * lat_sum)
+
+
+def _optimize_F_by_pairwise_swaps(
+    X_idx: np.ndarray,
+    tau_idx: List[Tuple[int, int]],
+    acc_vec: np.ndarray,
+    lat_vec: np.ndarray,
+    F_e: np.ndarray,
+    F_c: np.ndarray,
+    cuts_by_k: np.ndarray,
+    cache: Dict[Tuple[int, int], Dict[str, Any]],
     paras,
-    i: int,
-    cut0: int,
-    cut1: int,
-    PS: np.ndarray,
-    PCS: np.ndarray,
-    prefC: np.ndarray,
-) -> Tuple[float, float, float]:
+    iters: int = 200,
+    deltas_frac: Tuple[float, ...] = (0.05, 0.02, 0.01),
+    tol: float = 1e-6,
+    rng: np.random.Generator = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
     """
-    Return (const_i, b_i, c_i) s.t.
-      latency_i = const_i + b_i / f_e_i + c_i / f_c_i
-    with f_e_i, f_c_i in GHz (matching your code which multiplies by 1e9).
+    严格 objective 增量的资源交换优化：
+    - 每次只交换两个用户 i,j 的资源（edge 或 cloud）
+    - 只重算 i,j 的 latency（用 compute_user_latency 原公式）
+    - acc 不受 F 影响，所以不变
     """
-    m = paras.m
+    if rng is None:
+        rng = np.random.default_rng()
 
-    # local part: sum_{j=0..cut0} P[j]*prefC[j] / (f_u*1e9)
-    f_u = float(np.asarray(paras.F_u).reshape(-1)[i])  # GHz
-    local_work = PCS[cut0 + 1]  # sum_{j<cut0+1} P[j]*prefC[j]
-    local_delay = local_work / (f_u * 1e9)
+    n = paras.n
+    alpha = float(paras.alpha)
+    beta = float(paras.beta)
 
-    # edge work: sum_{j=cut0..cut1-1} P[j]*(prefC[j]-prefC[cut0]) / 1e9
-    edge_work = (PCS[cut1] - PCS[cut0]) - prefC[cut0] * (PS[cut1] - PS[cut0])
-    b_i = max(0.0, edge_work / 1e9)
+    fe = F_e.reshape(-1).astype(np.float64).copy()
+    fc = F_c.reshape(-1).astype(np.float64).copy()
 
-    # cloud work: sum_{j=cut1..m-1} P[j]*(prefC[j]-prefC[cut1]) / 1e9
-    cloud_work = (PCS[m] - PCS[cut1]) - prefC[cut1] * (PS[m] - PS[cut1])
-    c_i = max(0.0, cloud_work / 1e9)
+    acc_sum = float(np.sum(acc_vec))
+    lat_sum = float(np.sum(lat_vec))
+    obj = _objective_from_sums(alpha, beta, acc_sum, lat_sum)
 
-    # u2e delay: d1 / R_i
-    D = np.asarray(paras.D, dtype=np.float64).reshape(-1)
-    d1 = float(D[cut0])
-    h_i = float(np.asarray(paras.H_u).reshape(-1)[i])
-    R_i = (float(paras.b_e) * 1e6) * math.log2(1.0 + (h_i * float(paras.G)) / float(paras.delta))
-    u2e = d1 / R_i
+    grid = cache[("grid", "grid")]["grid"]
 
-    # e2c delay: d2 / (b_c*1e6)
-    d2 = float(D[cut1])
-    e2c = d2 / (float(paras.b_c) * 1e6)
+    def _recompute_latency_user(u: int, fe_u: float, fc_u: float) -> float:
+        k = int(X_idx[u])
+        cut0, cut1 = int(cuts_by_k[k, 0]), int(cuts_by_k[k, 1])
 
-    const_i = local_delay + u2e + e2c
-    return const_i, b_i, c_i
+        i1, i2 = tau_idx[u]
+        P_row = cache[(i1, i2)]["P_row"]
 
+        return compute_user_latency(u, cut0, cut1, P_row, fe_u, fc_u, paras)
 
-def _solve_F_sqrt_allocation(b_vec: np.ndarray, c_vec: np.ndarray, paras) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Closed-form convex optimum for:
-      minimize sum b_i/f_e_i s.t. sum f_e_i <= f_e_max, f_e_i>=0
-    and similarly for cloud.
-    """
-    b = np.clip(b_vec.astype(np.float64), 0.0, None)
-    c = np.clip(c_vec.astype(np.float64), 0.0, None)
+    # --- main loop ---
+    for _ in range(iters):
+        improved = False
 
-    sb = np.sqrt(b)
-    sc = np.sqrt(c)
+        # (A) optimize edge resources
+        for frac in deltas_frac:
+            delta = frac * float(paras.f_e_max)
+            for __ in range(2 * n):
+                i = int(rng.integers(0, n))
+                j = int(rng.integers(0, n))
+                if i == j:
+                    continue
 
-    denom_b = float(np.sum(sb))
-    denom_c = float(np.sum(sc))
+                d = min(delta, fe[i])
+                if d <= 0:
+                    continue
 
-    if denom_b > 0:
-        F_e = float(paras.f_e_max) * sb / denom_b
-    else:
-        F_e = np.zeros_like(sb)
+                fe_i_new = fe[i] - d
+                fe_j_new = fe[j] + d
 
-    if denom_c > 0:
-        F_c = float(paras.f_c_max) * sc / denom_c
-    else:
-        F_c = np.zeros_like(sc)
+                lat_i_new = _recompute_latency_user(i, fe_i_new, fc[i])
+                lat_j_new = _recompute_latency_user(j, fe_j_new, fc[j])
 
-    return F_e.reshape(-1, 1), F_c.reshape(-1, 1)
+                if not (np.isfinite(lat_i_new) and np.isfinite(lat_j_new)):
+                    continue
 
+                lat_sum_new = lat_sum - float(lat_vec[i]) - float(lat_vec[j]) + lat_i_new + lat_j_new
+                obj_new = _objective_from_sums(alpha, beta, acc_sum, lat_sum_new)
 
-def _safe_latency_sum(const_vec: np.ndarray, b_vec: np.ndarray, c_vec: np.ndarray, F_e: np.ndarray, F_c: np.ndarray) -> float:
-    """
-    latency = sum const + sum b_i/f_e_i + sum c_i/f_c_i
-    with safe division (no divide-by-zero warnings, no NaNs).
-    """
-    fe = F_e.reshape(-1).astype(np.float64)
-    fc = F_c.reshape(-1).astype(np.float64)
+                if np.isfinite(obj_new) and obj_new > obj + tol:
+                    # accept
+                    fe[i] = fe_i_new
+                    fe[j] = fe_j_new
+                    lat_sum = lat_sum_new
+                    obj = obj_new
+                    lat_vec[i] = lat_i_new
+                    lat_vec[j] = lat_j_new
+                    improved = True
 
-    b = b_vec.astype(np.float64)
-    c = c_vec.astype(np.float64)
+        # (B) optimize cloud resources
+        for frac in deltas_frac:
+            delta = frac * float(paras.f_c_max)
+            for __ in range(2 * n):
+                i = int(rng.integers(0, n))
+                j = int(rng.integers(0, n))
+                if i == j:
+                    continue
 
-    edge_term = np.divide(b, fe, out=np.zeros_like(b), where=fe > 0)
-    cloud_term = np.divide(c, fc, out=np.zeros_like(c), where=fc > 0)
+                d = min(delta, fc[i])
+                if d <= 0:
+                    continue
 
-    lat = float(np.sum(const_vec) + np.sum(edge_term) + np.sum(cloud_term))
-    return lat
+                fc_i_new = fc[i] - d
+                fc_j_new = fc[j] + d
+
+                lat_i_new = _recompute_latency_user(i, fe[i], fc_i_new)
+                lat_j_new = _recompute_latency_user(j, fe[j], fc_j_new)
+
+                if not (np.isfinite(lat_i_new) and np.isfinite(lat_j_new)):
+                    continue
+
+                lat_sum_new = lat_sum - float(lat_vec[i]) - float(lat_vec[j]) + lat_i_new + lat_j_new
+                obj_new = _objective_from_sums(alpha, beta, acc_sum, lat_sum_new)
+
+                if np.isfinite(obj_new) and obj_new > obj + tol:
+                    # accept
+                    fc[i] = fc_i_new
+                    fc[j] = fc_j_new
+                    lat_sum = lat_sum_new
+                    obj = obj_new
+                    lat_vec[i] = lat_i_new
+                    lat_vec[j] = lat_j_new
+                    improved = True
+
+        if not improved:
+            break
+
+    F_e_new = fe.reshape(n, 1)
+    F_c_new = fc.reshape(n, 1)
+    return F_e_new, F_c_new, lat_vec, obj
 
 
 def optimize_BF(
@@ -199,16 +234,14 @@ def optimize_BF(
     threshold_step: float = 0.01,
     tol: float = 1e-6,
     verbose: bool = True,
+    F_opt_iters: int = 150,
 ):
     """
-    Simple BCD + local brute force baseline.
-    - No dual variables, no step-size tuning.
-    - Each user update: brute force over all X rows (C(m,2)) and two-exit thresholds (10201).
-    - Evaluate global Objective using the SAME form: alpha*sum(acc) - beta*sum(latency)
-      where latency is computed from (const + b/f_e + c/f_c) to avoid calling Objective() 10^8 times.
-
-    Returns:
-      best_val, best_sol=(X, Y, F_e, F_c), history(list of best values per outer iter)
+    增量 Objective BF（严格、无近似）：
+    - 阈值部分只缓存 P_row / acc（严格等价）
+    - latency 逐用户严格用 compute_user_latency（=你的原公式）
+    - 用户更新只重算该用户 acc_u/lat_u
+    - F_e/F_c 用 pairwise swap 严格增量更新（每次只重算两个用户 latency）
     """
     if paras is None:
         from __main__ import paras as _paras
@@ -219,184 +252,191 @@ def optimize_BF(
     assert len(exit_layers) == 2, "This BF implementation assumes exactly 2 early-exit layers."
     e1, e2 = exit_layers
 
-    # Precompute threshold cache: P, acc, PS, PCS for every (t1,t2)
-    cache = _precompute_P_acc_cache(paras, step=threshold_step)
-    prefC = cache[("prefC", "prefC")]["prefC"]
-    grid = cache[("prefC", "prefC")]["grid"]
+    alpha = float(paras.alpha)
+    beta = float(paras.beta)
 
-    # Precompute all X candidates
-    X_candidates = _generate_all_valid_X_rows(m)  # (K,m)
+    rng = np.random.default_rng()
+
+    # candidates
+    X_candidates = _generate_all_valid_X_rows(m)
     K = X_candidates.shape[0]
+    cuts_by_k = _precompute_cut_points_for_X_candidates(X_candidates, paras)
+
+    # threshold cache
+    cache = _precompute_threshold_cache(paras, step=threshold_step)
+    grid = cache[("grid", "grid")]["grid"]
+    G = len(grid)
 
     best_overall_val = -float("inf")
     best_overall_sol = None
     best_overall_hist: List[float] = []
 
-    rng = np.random.default_rng()
-
     for r in range(restarts):
-        # ---- 1) Random init ----
-        X = np.zeros((n, m), dtype=np.int8)
+        # ---- init X (by index), Y (by tau indices), F ----
+        X_idx = rng.integers(low=0, high=K, size=n)  # store candidate index per user
+        tau_raw = rng.integers(low=0, high=G, size=(n, 2))
+        tau_idx: List[Tuple[int, int]] = [(int(tau_raw[i, 0]), int(tau_raw[i, 1])) for i in range(n)]
+
+        F_e, F_c = _init_fe_fc(paras, rng)
+
+        # build Y matrix
         Y = np.ones((n, m), dtype=np.float64)
-
-        # Random X per user
-        idxs = rng.integers(low=0, high=K, size=n)
         for i in range(n):
-            X[i] = X_candidates[idxs[i]]
+            i1, i2 = tau_idx[i]
+            Y[i, e1] = grid[i1]
+            Y[i, e2] = grid[i2]
 
-        # Random thresholds per user (two exits)
-        t_idx = rng.integers(low=0, high=len(grid), size=(n, 2))
-        for i in range(n):
-            Y[i, e1] = grid[t_idx[i, 0]]
-            Y[i, e2] = grid[t_idx[i, 1]]
-
-        # Precompute per-user (const, b, c, acc) for current state
-        const_vec = np.zeros(n, dtype=np.float64)
-        b_vec = np.zeros(n, dtype=np.float64)
-        c_vec = np.zeros(n, dtype=np.float64)
+        # initialize acc_vec, lat_vec exactly
         acc_vec = np.zeros(n, dtype=np.float64)
-
-        # Also store current tau indices per user for quick cache lookup
-        tau_idx_cur = [(int(t_idx[i, 0]), int(t_idx[i, 1])) for i in range(n)]
+        lat_vec = np.zeros(n, dtype=np.float64)
 
         for i in range(n):
-            i1, i2 = tau_idx_cur[i]
-            PS = cache[(i1, i2)]["PS"]
-            PCS = cache[(i1, i2)]["PCS"]
-            acc_vec[i] = cache[(i1, i2)]["acc"]
+            i1, i2 = tau_idx[i]
+            acc_vec[i] = float(cache[(i1, i2)]["acc"])
 
-            cut0, cut1 = _get_cut_points_from_xrow(X[i])
-            const_i, b_i, c_i = _compute_user_latency_consts_and_work(paras, i, cut0, cut1, PS, PCS, prefC)
-            const_vec[i], b_vec[i], c_vec[i] = const_i, b_i, c_i
+            k = int(X_idx[i])
+            cut0, cut1 = int(cuts_by_k[k, 0]), int(cuts_by_k[k, 1])
+            P_row = cache[(i1, i2)]["P_row"]
 
-        # Evaluate initial Objective
-        F_e, F_c = _solve_F_sqrt_allocation(b_vec, c_vec, paras)
-        lat = _safe_latency_sum(const_vec, b_vec, c_vec, F_e, F_c)
-        val = float(paras.alpha * np.sum(acc_vec) - paras.beta * lat)
+            lat_vec[i] = compute_user_latency(
+                i,
+                cut0,
+                cut1,
+                P_row,
+                float(F_e.reshape(-1)[i]),
+                float(F_c.reshape(-1)[i]),
+                paras,
+            )
 
-        # safety: avoid NaN poisoning
+        acc_sum = float(np.sum(acc_vec))
+        lat_sum = float(np.sum(lat_vec))
+        val = _objective_from_sums(alpha, beta, acc_sum, lat_sum)
+
         if not np.isfinite(val):
-            # restart this run
             if verbose:
-                print(f"[BF-BCD] restart={r+1}/{restarts} init_obj is not finite, restarting.")
+                print(f"[BF-INC] restart={r+1}/{restarts} init_obj not finite, skip.")
             continue
 
         hist = [val]
-
         if verbose:
-            print(f"[BF-BCD] restart={r+1}/{restarts} init_obj={val:.6f}")
+            print(f"[BF-INC] restart={r+1}/{restarts} init_obj={val:.6f}")
 
-        # ---- 2) BCD iterations ----
+        # ---- BCD iterations ----
         for it in range(max_iter):
             improved_any = False
             order = rng.permutation(n)
 
+            # (A) user-wise brute force update of (X[u], tau[u]) with F fixed
             for u in order:
-                # Save current user state
-                x_old = X[u].copy()
-                y_old = Y[u].copy()
-                const_old, b_old, c_old, acc_old = const_vec[u], b_vec[u], c_vec[u], acc_vec[u]
-                i1_old, i2_old = tau_idx_cur[u]
+                old_k = int(X_idx[u])
+                old_tau = tau_idx[u]
+                old_acc = float(acc_vec[u])
+                old_lat = float(lat_vec[u])
 
                 best_local_val = val
-                best_local_x = x_old
-                best_local_y = y_old
-                best_local_const = const_old
-                best_local_b = b_old
-                best_local_c = c_old
-                best_local_acc = acc_old
-                best_local_tau = (i1_old, i2_old)
+                best_k = old_k
+                best_tau = old_tau
+                best_acc = old_acc
+                best_lat = old_lat
 
-                # Brute force this user's X and two thresholds
+                fe_u = float(F_e.reshape(-1)[u])
+                fc_u = float(F_c.reshape(-1)[u])
+
+                # enumerate candidates
                 for k in range(K):
-                    x_cand = X_candidates[k]
-                    cut0, cut1 = _get_cut_points_from_xrow(x_cand)
+                    cut0, cut1 = int(cuts_by_k[k, 0]), int(cuts_by_k[k, 1])
 
-                    for i1 in range(len(grid)):
-                        for i2 in range(len(grid)):
-                            PS = cache[(i1, i2)]["PS"]
-                            PCS = cache[(i1, i2)]["PCS"]
-                            acc_u = cache[(i1, i2)]["acc"]
+                    for i1 in range(G):
+                        for i2 in range(G):
+                            acc_u = float(cache[(i1, i2)]["acc"])
+                            P_row = cache[(i1, i2)]["P_row"]
 
-                            const_u, b_u, c_u = _compute_user_latency_consts_and_work(
-                                paras, u, cut0, cut1, PS, PCS, prefC
-                            )
-
-                            # Update vectors (only user u changes)
-                            const_tmp = const_vec.copy()
-                            b_tmp = b_vec.copy()
-                            c_tmp = c_vec.copy()
-                            acc_tmp = acc_vec.copy()
-
-                            const_tmp[u] = const_u
-                            b_tmp[u] = b_u
-                            c_tmp[u] = c_u
-                            acc_tmp[u] = acc_u
-
-                            # Solve optimal F analytically
-                            F_e_tmp, F_c_tmp = _solve_F_sqrt_allocation(b_tmp, c_tmp, paras)
-                            lat_tmp = _safe_latency_sum(const_tmp, b_tmp, c_tmp, F_e_tmp, F_c_tmp)
-
-                            val_tmp = float(paras.alpha * np.sum(acc_tmp) - paras.beta * lat_tmp)
-
-                            # Skip bad numerical cases
-                            if not np.isfinite(val_tmp):
+                            lat_u = compute_user_latency(u, cut0, cut1, P_row, fe_u, fc_u, paras)
+                            if not np.isfinite(lat_u):
                                 continue
 
-                            if val_tmp > best_local_val + tol:
+                            # incremental objective
+                            acc_sum_tmp = acc_sum - old_acc + acc_u
+                            lat_sum_tmp = lat_sum - old_lat + lat_u
+                            val_tmp = _objective_from_sums(alpha, beta, acc_sum_tmp, lat_sum_tmp)
+
+                            if np.isfinite(val_tmp) and val_tmp > best_local_val + tol:
                                 best_local_val = val_tmp
-                                best_local_x = x_cand.copy()
+                                best_k = k
+                                best_tau = (i1, i2)
+                                best_acc = acc_u
+                                best_lat = lat_u
 
-                                y_cand = np.ones(m, dtype=np.float64)
-                                y_cand[e1] = grid[i1]
-                                y_cand[e2] = grid[i2]
-                                best_local_y = y_cand
-
-                                best_local_const = const_u
-                                best_local_b = b_u
-                                best_local_c = c_u
-                                best_local_acc = acc_u
-                                best_local_tau = (i1, i2)
-
-                # Apply best update for user u
+                # apply if improved
                 if best_local_val > val + tol:
                     improved_any = True
+
+                    X_idx[u] = best_k
+                    tau_idx[u] = best_tau
+
+                    # update Y row
+                    i1, i2 = best_tau
+                    Y[u, :] = 1.0
+                    Y[u, e1] = grid[i1]
+                    Y[u, e2] = grid[i2]
+
+                    # update vectors and sums
+                    acc_sum = acc_sum - old_acc + best_acc
+                    lat_sum = lat_sum - old_lat + best_lat
+
+                    acc_vec[u] = best_acc
+                    lat_vec[u] = best_lat
+
                     val = best_local_val
-
-                    X[u] = best_local_x
-                    Y[u] = best_local_y
-                    const_vec[u] = best_local_const
-                    b_vec[u] = best_local_b
-                    c_vec[u] = best_local_c
-                    acc_vec[u] = best_local_acc
-                    tau_idx_cur[u] = best_local_tau
-
                 else:
                     # keep old
-                    X[u] = x_old
-                    Y[u] = y_old
-                    const_vec[u], b_vec[u], c_vec[u], acc_vec[u] = const_old, b_old, c_old, acc_old
-                    tau_idx_cur[u] = (i1_old, i2_old)
+                    pass
+
+            # (B) optimize F by strict pairwise swaps (only recompute two users latency each move)
+            F_e_new, F_c_new, lat_vec_new, val_new = _optimize_F_by_pairwise_swaps(
+                X_idx=X_idx,
+                tau_idx=tau_idx,
+                acc_vec=acc_vec,
+                lat_vec=lat_vec.copy(),
+                F_e=F_e,
+                F_c=F_c,
+                cuts_by_k=cuts_by_k,
+                cache=cache,
+                paras=paras,
+                iters=F_opt_iters,
+                tol=tol,
+                rng=rng,
+            )
+
+            if np.isfinite(val_new) and val_new > val + tol:
+                improved_any = True
+                F_e, F_c = F_e_new, F_c_new
+                lat_vec = lat_vec_new
+                lat_sum = float(np.sum(lat_vec))
+                val = val_new
 
             hist.append(val)
             if verbose:
-                print(f"[BF-BCD] restart={r+1} iter={it+1}/{max_iter} obj={val:.6f}")
+                print(f"[BF-INC] restart={r+1} iter={it+1}/{max_iter} obj={val:.6f}")
 
             if not improved_any:
                 if verbose:
-                    print(f"[BF-BCD] restart={r+1} converged (no improvement).")
+                    print(f"[BF-INC] restart={r+1} converged (no improvement).")
                 break
 
-        # ---- 3) Final primal evaluation using your original Objective() for safety ----
-        F_e, F_c = _solve_F_sqrt_allocation(b_vec, c_vec, paras)
-        val_check = float(objective(X.astype(float), Y, F_e, F_c, paras))
+        # ---- build final X matrix for output ----
+        X = np.zeros((n, m), dtype=np.float64)
+        for i in range(n):
+            X[i, :] = X_candidates[int(X_idx[i])].astype(np.float64)
 
+        # final objective (incremental already exact; this is just a sanity check style)
+        final_val = val
         if verbose:
-            print(f"[BF-BCD] restart={r+1} final_obj(check)={val_check:.6f}")
+            print(f"[BF-INC] restart={r+1} final_obj={final_val:.6f}")
 
-        if val_check > best_overall_val:
-            best_overall_val = val_check
-            best_overall_sol = (X.astype(float).copy(), Y.copy(), F_e.copy(), F_c.copy())
+        if np.isfinite(final_val) and final_val > best_overall_val:
+            best_overall_val = final_val
+            best_overall_sol = (X.copy(), Y.copy(), F_e.copy(), F_c.copy())
             best_overall_hist = hist
 
     return best_overall_val, best_overall_sol, best_overall_hist
