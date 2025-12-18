@@ -182,12 +182,12 @@ if __name__ == "__main__":
 
     # 2. 准备输入数据
     X = np.zeros((n, m))
-    X[0][0] = 1
     X[0][50] = 1
+    X[0][100] = 1
 
     Y = np.ones((n, m))
-    Y[0, 57] = 0.9
-    Y[0, 103] = 0.8
+    # Y[0, 57] = 0.9
+    # Y[0, 103] = 0.8
 
     F_e = np.ones((n, 1)) * (paras.f_e_max / n)
     F_c = np.ones((n, 1)) * (paras.f_c_max / n)

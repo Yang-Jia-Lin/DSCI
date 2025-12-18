@@ -31,7 +31,13 @@ def compute_layer_exit_probs(Y, paras):
             else:
                 # noinspection PyTypeChecker
                 P[i, j] = p[i, j] * np.prod(1 - p[i, :j])
-
+        # 3) 整体归一化
+        total = P[i].sum()
+        if total > 0:
+            P[i] = P[i] / total
+        else:
+            # 全零时，按业务给个默认分配，比如只退出最后一层
+            P[i, -1] = 1
     return P
 
 
@@ -70,8 +76,8 @@ if __name__ == "__main__":
     # Layer 1: 0.5 (中等)
     # Layer 2: 0.9 (高阈值，难退出)
     if m > 3:
-        Y[0, 57] = 0.9
-        Y[0, 103] = 0.8
+        Y[0, 57] = 1
+        Y[0, 103] = 1
         # 如果还有更多层，保持为 1.0
 
     print(f"\n>>> 测试用户 [0,57] 的阈值 Y 设置: {Y[0, 50:60]} ...")

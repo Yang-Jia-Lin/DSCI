@@ -1,5 +1,4 @@
 from Src.paras import *
-from Src.Objective.objective import objective
 from Src.Optimizer.BF.alg_BF import optimize_BF
 from Src.Utils.parsing_data import parsing_rate_and_acc
 from Src.Utils.log_function import save_experiment_results
@@ -28,20 +27,6 @@ paras = Paras(
     beta=20
 )
 paras.rates, paras.accs = parsing_rate_and_acc(paras)
-n = paras.n
-m = paras.m
-
-
-# Variable
-X = np.zeros([n,m])
-Y  = np.ones([n,m])
-F_e = np.ones((n, 1)) * paras.f_e_max / n
-F_c = np.ones((n, 1)) * paras.f_c_max / n
-
-
-# Objective
-obj = objective(X, Y, F_e, F_c, paras)
-print(f"objective is {obj}")
 
 
 # Optimize

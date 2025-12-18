@@ -24,9 +24,10 @@ def parsing_rate_and_acc(paras):
     # 提取 Acc
     for idx, threshold in df_acc.iterrows():
         exit_accuracies = threshold[1:num_exits + 1].values
+        # print(f"threshold.values is {threshold[num_exits + 1]}")
         for i, layer in enumerate(exit_layer):
             acc_matrix[idx, layer] = exit_accuracies[i]
-
+        acc_matrix[:,m-1] = threshold.iloc[num_exits + 1]
     return rate_matrix, acc_matrix
 
 
@@ -42,3 +43,31 @@ def _decode_split_points(x_row: np.ndarray) -> Tuple[int, int]:
 
 def split_points_matrix(X: np.ndarray) -> np.ndarray:
     return np.array([_decode_split_points(r) for r in X], dtype=int)
+
+
+if __name__ == '__main__':
+    from Src.paras import *
+    paras = Paras(
+        # Users
+        n=NUM_USERS,
+        # Model
+        m=NUM_LAYERS,
+        E=EARLY_EXIT_LAYERS,
+        D=DATA_SIZE_LAYERS,
+        C=COMPUTE_SIZE_LAYERS,
+        # Resource
+        F_u=USER_FREQs,
+        f_e_max=EDGE_MAX_FREQ,
+        f_c_max=CLOUD_MAX_FREQ,
+        H_u=CHANNEL_GAINS_USERS,
+        b_e=BANDWIDTH_EDGE,
+        b_c=BANDWIDTH_CLOUD,
+        G=BASE_STATION_POWER,
+        delta=NOISE_POWER,
+        # Weights
+        alpha=1,
+        beta=20
+    )
+    paras.rates, paras.accs = parsing_rate_and_acc(paras)
+    print(paras.accs[:, 57])
+    print(paras.accs[:, 127])
