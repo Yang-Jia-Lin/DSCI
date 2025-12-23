@@ -28,7 +28,7 @@ COMPUTE_SIZE_LAYERS = df["approx_flops"].astype(int).tolist()
 
 # Compute
 USER_FREQs = NUM_USERS * [2]    # 用户每人 2 GHz
-EDGE_MAX_FREQ = 10.0            # 边缘服务器 10 GHz
+EDGE_MAX_FREQ = 20.0            # 边缘服务器 10 GHz
 CLOUD_MAX_FREQ = 50.0           # 云服务器 50 GHz
 
 # Communicate

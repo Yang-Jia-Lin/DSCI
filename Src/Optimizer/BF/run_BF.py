@@ -30,7 +30,7 @@ paras.rates, paras.accs = parsing_rate_and_acc(paras)
 
 
 # Optimize
-bf_params = {'max_iter': 5, 'restarts': 2, 'threshold_step': 0.01}
+bf_params = {'max_iter': 5, 'restarts': 2, 'threshold_step': 0.05}
 BF_best_val, BF_best_sol, BF_history = optimize_BF(
     paras,
     max_iter=bf_params['max_iter'],
