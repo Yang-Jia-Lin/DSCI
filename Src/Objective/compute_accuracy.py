@@ -2,6 +2,8 @@
 计算全部任务的准确率
 Src/Objective/compute_accuracy.py
 """
+from Src.paras import *
+
 
 def _get_acc(Y_ij, j, exit_rates):
     closest_idx = round(Y_ij * 100)
@@ -31,7 +33,6 @@ def compute_expected_accuracy(Y, P, paras):
 
 
 if __name__ == "__main__":
-    from Src.paras import *
     from Src.Utils.parsing_data import parsing_rate_and_acc
     from Src.Objective.compute_P import compute_layer_exit_probs
     paras = Paras(
