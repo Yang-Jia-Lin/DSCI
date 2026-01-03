@@ -1,4 +1,7 @@
-# Optimizer/alg_BF.py
+"""
+Src/Optimizer/BF/alg_BF.py
+"""
+
 import numpy as np
 from typing import Tuple, Dict, Any, List
 
@@ -237,15 +240,11 @@ def optimize_BF(
     F_opt_iters: int = 150,
 ):
     """
-    增量 Objective BF（严格、无近似）：
-    - 阈值部分只缓存 P_row / acc（严格等价）
-    - latency 逐用户严格用 compute_user_latency（=你的原公式）
+    - 阈值部分只缓存 P_row / acc
+    - latency 逐用户严格用 compute_user_latency
     - 用户更新只重算该用户 acc_u/lat_u
     - F_e/F_c 用 pairwise swap 严格增量更新（每次只重算两个用户 latency）
     """
-    if paras is None:
-        from __main__ import paras as _paras
-        paras = _paras
 
     n, m = paras.n, paras.m
     exit_layers = tuple(paras.E)

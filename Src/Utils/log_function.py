@@ -1,3 +1,7 @@
+"""
+Src/Utils/log_function.py
+"""
+
 import time
 import json
 import numpy as np

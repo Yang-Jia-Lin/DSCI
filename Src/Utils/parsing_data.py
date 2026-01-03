@@ -1,6 +1,8 @@
-import numpy as np
-import pandas as pd
-from Src.paras import RATE_CSV_PATH, ACC_CSV_PATH
+"""
+Src/Utils/parsing_data.py
+"""
+
+from Src.paras import *
 from typing import Tuple
 
 
@@ -46,7 +48,6 @@ def split_points_matrix(X: np.ndarray) -> np.ndarray:
 
 
 if __name__ == '__main__':
-    from Src.paras import *
     paras = Paras(
         # Users
         n=NUM_USERS,

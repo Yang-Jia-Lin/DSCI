@@ -1,4 +1,7 @@
-import numpy as np
+"""
+计算全部任务的准确率
+Src/Objective/compute_accuracy.py
+"""
 
 def _get_acc(Y_ij, j, exit_rates):
     closest_idx = round(Y_ij * 100)

@@ -1,4 +1,7 @@
-# functions/compute_exit_points.py
+"""
+根据 X 计算早退点
+Src/Objective/compute_exit_points.py
+"""
 
 import numpy as np
 

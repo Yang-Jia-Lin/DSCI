@@ -1,4 +1,8 @@
-# Data and Parameters
+"""
+Data and Parameters
+Src/paras.py
+"""
+
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np

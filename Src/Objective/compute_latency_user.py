@@ -1,4 +1,8 @@
-# Src/Objective/compute_latency_user.py
+"""
+计算单一任务时延
+Src/Objective/compute_latency_user.py
+"""
+
 import numpy as np
 
 

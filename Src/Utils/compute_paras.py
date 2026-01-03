@@ -1,3 +1,7 @@
+"""
+Src/Utils/compute_paras.py
+"""
+
 import numpy as np
 from Src.Utils.parsing_data import split_points_matrix
 

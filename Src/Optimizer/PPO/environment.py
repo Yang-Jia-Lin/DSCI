@@ -1,4 +1,6 @@
-# 环境接口，封装objective & 约束
+"""
+Src/Optimizer/PPO/environment.py
+"""
 
 from Src.Objective.objective import objective
 import numpy as np

@@ -1,4 +1,7 @@
-# functions/compute_P.py
+"""
+计算退出概率
+Src/Objective/compute_P.py
+"""
 
 import numpy as np
 

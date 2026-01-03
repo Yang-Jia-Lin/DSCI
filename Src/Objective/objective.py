@@ -1,4 +1,7 @@
-# functions/Objective.py
+"""
+目标函数
+Src/Objective/Objective.py
+"""
 
 from Src.Objective.compute_P import compute_layer_exit_probs
 from Src.Objective.compute_latency import compute_total_latency

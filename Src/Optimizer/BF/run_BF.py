@@ -1,4 +1,6 @@
-# Src/Optimizer/BF/run_BF.py
+"""
+Src/Optimizer/BF/run_BF.py
+"""
 
 from Src.paras import *
 from Src.Utils.parsing_data import parsing_rate_and_acc

@@ -1,4 +1,6 @@
-# Src/Utils/log_function.py
+"""
+Src/Utils/log_function.py
+"""
 
 from datetime import datetime
 import matplotlib.pyplot as plt

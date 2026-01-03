@@ -1,5 +1,7 @@
-# 存储 rollout 的缓冲区
-
+"""
+存储 rollout 的缓冲区
+Src/Optimizer/PPO/buffer.py
+"""
 import torch
 
 

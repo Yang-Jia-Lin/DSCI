@@ -1,4 +1,7 @@
-# function/compute_latency.py
+"""
+计算所有任务总时延
+Src/Objective/compute_latency.py
+"""
 
 from Src.paras import *
 from Src.Objective.compute_P import compute_layer_exit_probs
