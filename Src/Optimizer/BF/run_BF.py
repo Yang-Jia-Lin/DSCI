@@ -1,6 +1,8 @@
+# Src/Optimizer/BF/run_BF.py
+
 from Src.paras import *
-from Src.Optimizer.BF.alg_BF import optimize_BF
 from Src.Utils.parsing_data import parsing_rate_and_acc
+from Src.Optimizer.BF.alg_BF import optimize_BF
 from Src.Utils.log_function import save_experiment_results
 
 
@@ -30,12 +32,16 @@ paras.rates, paras.accs = parsing_rate_and_acc(paras)
 
 
 # Optimize
-bf_params = {'max_iter': 5, 'restarts': 2, 'threshold_step': 0.05}
+BF_hyperparams = {
+    'max_iter': 5,
+    'restarts': 2,
+    'threshold_step': 0.05
+}
 BF_best_val, BF_best_sol, BF_history = optimize_BF(
     paras,
-    max_iter=bf_params['max_iter'],
-    restarts=bf_params['restarts'],
-    threshold_step=bf_params['threshold_step']
+    max_iter=BF_hyperparams['max_iter'],
+    restarts=BF_hyperparams['restarts'],
+    threshold_step=BF_hyperparams['threshold_step']
 )
 
 
@@ -47,5 +53,5 @@ save_experiment_results(
     best_val=BF_best_val,
     best_sol=BF_best_sol,
     history=BF_history,
-    hyper_params=bf_params
+    hyper_params=BF_hyperparams
 )
