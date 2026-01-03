@@ -8,12 +8,54 @@ import torch.nn.functional as F
 from Src.Objective.compute_P import compute_layer_exit_probs
 from Src.Objective.compute_accuracy import compute_expected_accuracy
 from Src.Objective.compute_latency import compute_total_latency
+from Src.Objective.objective import objective, get_lat_and_acc
 from Src.Optimizer.PPO.networks import ActorCritic
 from Src.Optimizer.PPO.buffer import RolloutBuffer, TopKRolloutMemory
-from Src.Optimizer.PPO.environment import project_X, clip_Y, compute_reward, init_feasible_XY
 
 
-def flatten_state(X, Y):
+# 约束 X
+def _project_X(X):
+    """ 保证 X 每行最多2个1，其余置0"""
+    for i in range(X.shape[0]):
+        if np.sum(X[i]) > 2:
+            # 直接随机保留2个
+            ones_idx = np.where(X[i]==1)[0]
+            keep_idx = np.random.choice(ones_idx, size=2, replace=False)
+            X[i] = 0
+            X[i][keep_idx] = 1
+    return X
+
+
+# 约束 Y
+def _clip_Y(Y, E):
+    """ 对 Y clip到[0,1]，并固定不可早退层(j not in E)为1 """
+    Y = np.clip(Y, 0, 1)
+    all_indices = np.arange(Y.shape[1])
+    fixed_indices = np.setdiff1d(all_indices, E)
+    Y[:, fixed_indices] = 1.0
+    return Y
+
+
+# 计算奖励
+def _compute_reward(X,Y,F_e,F_c,paras):
+    reward = objective(X,Y,F_e,F_c,paras)
+    if np.isnan(reward) or np.isinf(reward):
+         print(f"【Warning】: reward is nan or inf: {reward}\naction_X: {X}, action_Y: {Y}, f_e: {F_e}, f_c: {F_c}")
+         reward = 0
+    return reward
+
+
+# 随机初始化
+def _init_feasible_XY(paras):
+    n, m = paras.n, paras.m
+    X = np.random.randint(0, 2, (n, m))
+    X = _project_X(X)
+    Y = np.random.uniform(0, 1, (n, m))
+    Y = _clip_Y(Y, paras.E)
+    return X, Y
+
+# 展平 X+Y
+def _flatten_state(X, Y):
     return torch.tensor(np.concatenate([X.flatten(), Y.flatten()]), dtype=torch.float32).unsqueeze(0)
 
 
@@ -53,8 +95,8 @@ class PPOAgent:
         action_Y = sampled_Y.detach().cpu().numpy().reshape(self.paras.n, self.paras.m)
 
         # 执行环境硬约束
-        action_X = project_X(action_X)
-        action_Y = clip_Y(action_Y, self.paras.E)
+        action_X = _project_X(action_X)
+        action_Y = _clip_Y(action_Y, self.paras.E)
         action_Y = np.clip(action_Y, 0, 1)  # 二次clip保证
 
         # logprob & value
@@ -120,38 +162,45 @@ class PPOAgent:
         for epoch in range(self.hparams['max_epochs']):
 
             # ========== 内层：强化学习 ==========
-            self.buffer.clear()
-            X, Y = init_feasible_XY(self.paras)
+            # 0. 初始化 X, Y, result, buffer
+            X, Y = _init_feasible_XY(self.paras)
             best_epoch_reward = -np.inf
             best_epoch_action_X, best_epoch_action_Y = X, Y
+            self.buffer.clear()  # 每个 epoch 清空上一轮的所有经验，重新总结
 
-            # 1.Rollout: target_steps
+
+            # 1. 多次动作 采样到buffer中（Rollout: target_steps）
             steps = 0
             while steps < self.hparams['target_steps']:
-                state = flatten_state(X, Y)
+                state = _flatten_state(X, Y)
+                # 1.1 执行动作
                 action_X, action_Y, logprob, value = self.sample_action(state)
-                reward = compute_reward(action_X, action_Y, F_e, F_c, self.paras)
-                if np.isnan(reward) or np.isinf(reward):
-                    print(f"【Warning】: reward is nan or inf: {reward}\naction_X: {action_X}, action_Y: {action_Y}, f_e: {F_e}, f_c: {F_c}")
-                    reward = 0
+                # 1.2 计算奖励
+                reward = _compute_reward(action_X, action_Y, F_e, F_c, self.paras)
+                # 1.3 记录到buffer
                 self.buffer.add(state.squeeze(), action_X, action_Y, logprob, value.item(), reward, 0)
-                X, Y = action_X, action_Y
-                steps += 1
                 if reward > best_epoch_reward:
                     best_epoch_reward = reward
                     best_epoch_action_X = action_X.copy()
                     best_epoch_action_Y = action_Y.copy()
-            # 最大值 回滚机制
+                # 1.4 下个step
+                X, Y = action_X, action_Y
+                steps += 1
+
+
+
+            # 2. 稳定结果
+            # 2.1 最大值 回滚机制
             rollout_data = self.buffer.get_all_data()
             self.topk_buffer.add(rollout_data, best_epoch_reward)
-            # top-k 拼接机制
+            # 2.2 top-k 拼接机制
             extra_buffers = self.topk_buffer.get_all()
             for extra in extra_buffers:
-                self.buffer.extend(extra)  # 你需要实现 buffer 的 extend() 方法
+                self.buffer.extend(extra)
 
-            # 2.Update
+
+            # 3. 根据多步采样结果更新策略
             self.update_policy(epoch)
-
 
 
             # ========== 外层：凸优化 ==========
@@ -165,18 +214,19 @@ class PPOAgent:
 
 
             # =========== 统计结果 ==========
-            best_epoch_reward = compute_reward(best_epoch_action_X, best_epoch_action_Y, F_e, F_c, self.paras)
+            # 整体表现
+            best_epoch_reward = _compute_reward(best_epoch_action_X, best_epoch_action_Y, F_e, F_c, self.paras)
             history.append(best_epoch_reward)
             if best_epoch_reward > best_val:
                 best_val = best_epoch_reward
                 best_sol = (best_epoch_action_X, best_epoch_action_Y, F_e, F_c)
                 self.best_policy_state_dict = {k: v.clone() for k, v in self.policy.state_dict().items()}
 
-            P = compute_layer_exit_probs(best_epoch_action_Y, self.paras)
-            latency = sum(compute_total_latency(best_epoch_action_X, P, F_e, F_c, self.paras))
-            acc = sum(compute_expected_accuracy(best_epoch_action_Y, P, self.paras))
+            # 具体时延和精度
+            latency, acc = get_lat_and_acc(best_epoch_action_X, best_epoch_action_Y, F_e, F_c, self.paras)
             print(f"Epoch {epoch}: current_val={best_epoch_reward}, latency={latency}, acc={acc}")
-            # 回滚机制
+
+            # 回滚
             if epoch > 5 and best_epoch_reward < np.mean(history[-5:]) - 1:
                 print(f"[Rollback] Performance degraded at epoch {epoch}, rolling back best policy.")
                 self.policy.load_state_dict(self.best_policy_state_dict)

@@ -24,7 +24,11 @@ def objective(X, Y, F_e, F_c, paras):
     return paras.alpha * acc - paras.beta * latency
 
 
-
+def get_lat_and_acc(X, Y, F_e, F_c, paras):
+    P = compute_layer_exit_probs(Y, paras)
+    latency = sum(compute_total_latency(X, P, F_e, F_c, paras))
+    acc = sum(compute_expected_accuracy(Y, P, paras))
+    return latency, acc
 
 
 
