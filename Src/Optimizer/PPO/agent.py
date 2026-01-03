@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from Src.paras import *
 from Src.Objective.objective import objective, get_lat_and_acc
 from Src.Optimizer.PPO.networks import ActorCritic
-from Src.Optimizer.PPO.buffer import RolloutBuffer, TopKRolloutMemory
+from Src.Optimizer.PPO.buffer import RolloutBuffer
 
 
 # 约束 X
@@ -74,32 +74,83 @@ class PPOAgent:
         self.buffer = RolloutBuffer()
 
         self.best_policy_state_dict = None  # 保存策略参数
-        self.topk_buffer = TopKRolloutMemory(capacity=5)
+        # self.topk_buffer = TopKRolloutMemory(capacity=5)
+
 
     def sample_action(self, state):
         logits_X, mu_Y, std_Y, value = self.policy(state)
 
-        # 对X: Bernoulli采样并按概率保留2个1
-        logits_X = torch.clamp(logits_X, -10, 10)
-        p_X = torch.sigmoid(logits_X).detach().cpu().numpy().reshape(self.paras.n, self.paras.m)
-        action_X = np.zeros_like(p_X)
-        for i in range(action_X.shape[0]):
-            top2_idx = np.argsort(p_X[i])[-2:]
-            action_X[i][top2_idx] = 1
+        # ===== X: hierarchical policy with k in {0,1,2}, sum(row)<=2 =====
+        logits_X = torch.clamp(logits_X, -10, 10)  # (1, n*m) expected
+        logits_X_row = logits_X.squeeze(0).view(self.paras.n, self.paras.m)  # (n, m)
 
-        # 对Y: Normal采样
+        action_X = np.zeros((self.paras.n, self.paras.m), dtype=np.float32)
+        logprob_X = torch.tensor(0.0, dtype=torch.float32, device=logits_X.device)
+
+        for i in range(self.paras.n):
+            row_logits = logits_X_row[i]  # (m,)
+
+            # ---- 1) sample k ∈ {0,1,2} from row-derived gate ----
+            s = row_logits.mean()  # scalar
+            k_logits = torch.stack([torch.tensor(0.0, device=row_logits.device),
+                                    s,
+                                    2.0 * s])  # (3,)
+            k_probs = torch.softmax(k_logits, dim=-1)
+            k_dist = torch.distributions.Categorical(probs=k_probs)
+            k = int(k_dist.sample().item())
+
+            # log p(k)
+            logprob_X = logprob_X + torch.log(k_probs[k] + 1e-12)
+
+            # ---- 2) sample indices conditioned on k ----
+            probs1 = torch.softmax(row_logits, dim=-1)  # (m,)
+
+            if k == 0:
+                # choose nothing
+                continue
+
+            elif k == 1:
+                dist1 = torch.distributions.Categorical(probs=probs1)
+                a1 = int(dist1.sample().item())
+                action_X[i, a1] = 1.0
+                logprob_X = logprob_X + torch.log(probs1[a1] + 1e-12)
+
+            else:  # k == 2
+                dist1 = torch.distributions.Categorical(probs=probs1)
+                a1_t = dist1.sample()
+
+                probs2 = probs1.clone()
+                probs2[a1_t] = 0.0
+                probs2 = probs2 / (probs2.sum() + 1e-12)
+                dist2 = torch.distributions.Categorical(probs=probs2)
+                a2_t = dist2.sample()
+
+                # fixed order (ascending) for consistency with update parsing
+                j1, j2 = int(a1_t.item()), int(a2_t.item())
+                if j1 > j2:
+                    j1, j2 = j2, j1
+
+                action_X[i, j1] = 1.0
+                action_X[i, j2] = 1.0
+
+                # log p(j1) + log p(j2 | j1 masked), using the same fixed order
+                logprob_X = logprob_X + torch.log(probs1[j1] + 1e-12)
+                probs2_fix = probs1.clone()
+                probs2_fix[j1] = 0.0
+                probs2_fix = probs2_fix / (probs2_fix.sum() + 1e-12)
+                logprob_X = logprob_X + torch.log(probs2_fix[j2] + 1e-12)
+
+        # ===== Y: keep your original Normal sampling =====
         dist_Y = torch.distributions.Normal(mu_Y, std_Y)
         sampled_Y = dist_Y.sample()
         action_Y = sampled_Y.detach().cpu().numpy().reshape(self.paras.n, self.paras.m)
 
-        # 执行环境硬约束
-        action_X = _project_X(action_X)
+        # ===== hard constraints =====
+        action_X = _project_X(action_X)  # should keep sum<=2
         action_Y = _clip_Y(action_Y, self.paras.E)
-        action_Y = np.clip(action_Y, 0, 1)  # 二次clip保证
+        action_Y = np.clip(action_Y, 0, 1)
 
-        # logprob & value
-        dist_X = torch.distributions.Bernoulli(torch.clamp(torch.sigmoid(logits_X), 1e-6, 1 - 1e-6))
-        logprob_X = dist_X.log_prob(torch.tensor(action_X.flatten(), dtype=torch.float32)).sum()
+        # ===== total logprob =====
         logprob_Y = dist_Y.log_prob(sampled_Y).sum()
         logprob = (logprob_X + logprob_Y).detach()
 
@@ -110,21 +161,84 @@ class PPOAgent:
         entropy_coef = self.initial_entropy_coef * (self.entropy_decay ** epoch)
 
         advantages, returns = self.buffer.compute_advantages(self.hparams['gamma'], self.hparams['lam'])
-        states = torch.stack(self.buffer.states)
+        states = torch.stack(self.buffer.states)  # (B, state_dim)
+
         actions_X = torch.tensor(np.stack(self.buffer.actions_X), dtype=torch.float32).view(len(states), -1)
         actions_Y = torch.tensor(np.stack(self.buffer.actions_Y), dtype=torch.float32).view(len(states), -1)
         old_logprobs = torch.stack(self.buffer.logprobs).detach()
 
+        B = len(states)
+        n, m = self.paras.n, self.paras.m
+
         for _ in range(self.hparams['k_epochs']):
             logits_X, mu_Y, std_Y, values_new = self.policy(states)
             logits_X = torch.clamp(logits_X, -10, 10)
-            p_X_probs = torch.clamp(torch.sigmoid(logits_X), 1e-6, 1 - 1e-6)
 
-            dist_X = torch.distributions.Bernoulli(p_X_probs)
+            logits_X_rows = logits_X.view(B, n, m)  # (B, n, m)
+            actions_X_rows = actions_X.view(B, n, m)  # (B, n, m)
+
+            new_logprob_X = torch.zeros(B, dtype=torch.float32, device=logits_X.device)
+            entropy_X = torch.zeros(B, dtype=torch.float32, device=logits_X.device)
+
+            for b in range(B):
+                lp_b = torch.tensor(0.0, dtype=torch.float32, device=logits_X.device)
+                ent_b = torch.tensor(0.0, dtype=torch.float32, device=logits_X.device)
+
+                for i in range(n):
+                    row_logits = logits_X_rows[b, i]  # (m,)
+                    probs1 = torch.softmax(row_logits, dim=-1)
+
+                    # ---- gate distribution p(k) ----
+                    s = row_logits.mean()
+                    k_logits = torch.stack([torch.tensor(0.0, device=row_logits.device),
+                                            s,
+                                            2.0 * s])
+                    k_probs = torch.softmax(k_logits, dim=-1)
+
+                    # infer k from action row sum (threshold to avoid float noise)
+                    row = actions_X_rows[b, i]
+                    row_bin = (row > 0.5).to(torch.float32)
+                    k = int(torch.clamp(row_bin.sum(), 0, 2).item())  # 0/1/2
+
+                    # log p(k) and entropy H(k)
+                    lp_b = lp_b + torch.log(k_probs[k] + 1e-12)
+                    k_dist = torch.distributions.Categorical(probs=k_probs)
+                    ent_b = ent_b + k_dist.entropy()
+
+                    if k == 0:
+                        continue
+
+                    elif k == 1:
+                        # find the single selected index
+                        j = int(torch.argmax(row_bin).item())
+                        lp_b = lp_b + torch.log(probs1[j] + 1e-12)
+
+                        dist1 = torch.distributions.Categorical(probs=probs1)
+                        ent_b = ent_b + dist1.entropy()
+
+                    else:  # k == 2
+                        idx = torch.topk(row_bin, k=2).indices
+                        j1 = int(torch.min(idx).item())
+                        j2 = int(torch.max(idx).item())
+
+                        lp_b = lp_b + torch.log(probs1[j1] + 1e-12)
+
+                        probs2 = probs1.clone()
+                        probs2[j1] = 0.0
+                        probs2 = probs2 / (probs2.sum() + 1e-12)
+                        lp_b = lp_b + torch.log(probs2[j2] + 1e-12)
+
+                        dist1 = torch.distributions.Categorical(probs=probs1)
+                        dist2 = torch.distributions.Categorical(probs=probs2)
+                        ent_b = ent_b + dist1.entropy() + dist2.entropy()
+
+                new_logprob_X[b] = lp_b
+                entropy_X[b] = ent_b
+
+            # ===== Y: same as before =====
             dist_Y = torch.distributions.Normal(mu_Y, std_Y)
-
-            new_logprob_X = dist_X.log_prob(actions_X).sum(1)
             new_logprob_Y = dist_Y.log_prob(actions_Y).sum(1)
+
             new_logprob = new_logprob_X + new_logprob_Y
 
             ratio = torch.exp(new_logprob - old_logprobs)
@@ -136,8 +250,9 @@ class PPOAgent:
 
             value_loss = F.mse_loss(values_new.squeeze(), returns)
 
-            # 动态熵
-            entropy = dist_X.entropy().sum(1) + dist_Y.entropy().sum(1)
+            entropy_Y = dist_Y.entropy().sum(1)
+            entropy = entropy_X + entropy_Y
+
             total_loss = policy_loss + 0.5 * value_loss - entropy_coef * entropy.mean()
 
             self.optimizer.zero_grad()
@@ -187,14 +302,14 @@ class PPOAgent:
 
 
 
-            # 2. 稳定结果
-            # 2.1 最大值 回滚机制
-            rollout_data = self.buffer.get_all_data()
-            self.topk_buffer.add(rollout_data, best_epoch_reward)
-            # 2.2 top-k 拼接机制
-            extra_buffers = self.topk_buffer.get_all()
-            for extra in extra_buffers:
-                self.buffer.extend(extra)
+            # # 2. 稳定结果
+            # # 2.1 最大值 回滚机制
+            # rollout_data = self.buffer.get_all_data()
+            # self.topk_buffer.add(rollout_data, best_epoch_reward)
+            # # 2.2 top-k 拼接机制
+            # extra_buffers = self.topk_buffer.get_all()
+            # for extra in extra_buffers:
+            #     self.buffer.extend(extra)
 
 
             # 3. 根据多步采样结果更新策略
