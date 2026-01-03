@@ -161,6 +161,9 @@ class PPOAgent:
         entropy_coef = self.initial_entropy_coef * (self.entropy_decay ** epoch)
 
         advantages, returns = self.buffer.compute_advantages(self.hparams['gamma'], self.hparams['lam'])
+        # Fix: Advantage normalization
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+
         states = torch.stack(self.buffer.states)  # (B, state_dim)
 
         actions_X = torch.tensor(np.stack(self.buffer.actions_X), dtype=torch.float32).view(len(states), -1)
@@ -291,7 +294,7 @@ class PPOAgent:
                 # 1.2 计算奖励
                 reward = _compute_reward(action_X, action_Y, F_e, F_c, self.paras)
                 # 1.3 记录到buffer
-                self.buffer.add(state.squeeze(), action_X, action_Y, logprob, value.item(), reward, 0)
+                self.buffer.add(state.squeeze(), action_X, action_Y, logprob, value.item(), reward, 1)
                 if reward > best_epoch_reward:
                     best_epoch_reward = reward
                     best_epoch_action_X = action_X.copy()

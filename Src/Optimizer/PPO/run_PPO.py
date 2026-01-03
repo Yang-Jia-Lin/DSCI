@@ -2,6 +2,11 @@
 Src/Optimizer/PPO/run_PPO.py
 """
 
+import os
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 from Src.paras import *
 from Src.Utils.parsing_data import parsing_rate_and_acc
 from Src.Optimizer.PPO.agent import PPOAgent
@@ -35,15 +40,15 @@ paras.rates, paras.accs = parsing_rate_and_acc(paras)
 
 # Optimize
 PPO_hyperparams = {
-    'gamma': 0.99,
+    'gamma': 0.95,
     'lam': 0.95,
     'lr': 1e-4,
     'eps_clip': 0.15,
     'max_epochs': 100,
-    'target_steps': 2048,
+    'target_steps': 1024,
     'k_epochs': 10,
-    'entropy_coef': 0.5,
-    'entropy_decay': 0.999
+    'entropy_coef': 0.01,
+    'entropy_decay': 0.995
 }
 PPO_best_val, PPO_best_sol, PPO_history = PPOAgent(
     paras,
