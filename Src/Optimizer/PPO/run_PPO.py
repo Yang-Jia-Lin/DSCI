@@ -2,11 +2,6 @@
 Src/Optimizer/PPO/run_PPO.py
 """
 
-import os
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
-
 from Src.paras import *
 from Src.Utils.parsing_data import parsing_rate_and_acc
 from Src.Optimizer.PPO.agent import PPOAgent
@@ -33,7 +28,7 @@ paras = Paras(
     delta = NOISE_POWER,
     # Weights
     alpha=1,
-    beta=20
+    beta=5
 )
 paras.rates, paras.accs = parsing_rate_and_acc(paras)
 

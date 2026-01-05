@@ -1,7 +1,9 @@
 """
 Src/Utils/device.py
 """
-
+import os
+import platform
+import subprocess
 import torch
 
 
@@ -17,3 +19,13 @@ def get_device(verbose: bool = True) -> torch.device:
         else:
             print('CUDA not available, using CPU. \n')
     return device
+
+
+def open_file(file_path):
+    """跨平台打开文件"""
+    if platform.system() == "Windows":
+        os.startfile(file_path)
+    elif platform.system() == "Darwin":  # macOS
+        subprocess.run(["open", str(file_path)])
+    else:  # Linux
+        subprocess.run(["xdg-open", str(file_path)])
