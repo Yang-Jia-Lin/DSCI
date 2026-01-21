@@ -36,7 +36,8 @@ def save_experiment_results(
         best_val: float,
         best_sol: tuple,
         history: list,
-        hyper_params: dict = None
+        hyper_params: dict = None,
+        extra_logs: list = None
 ):
     """
     通用 Log 保存函数：
@@ -67,16 +68,35 @@ def save_experiment_results(
         "System_Parameters": paras_dict
     }
 
+    # ===== 新增：在 config.json 中记录 extra_logs 的 key 摘要（可选）=====
+    if extra_logs is not None:
+        config_data["Extra_Logs_Keys"] = sorted(list(extra_logs[0].keys())) if len(extra_logs) > 0 else []
+
     json_path = exp_dir / "config.json"
     with open(json_path, "w", encoding="utf-8") as f:
         # 使用自定义 Encoder 处理 numpy 数组
         json.dump(config_data, f, indent=4, cls=NumpyEncoder)
+
+    # ===== 新增：保存 metrics.jsonl（可选，强烈推荐）=====
+    if extra_logs is not None:
+        metrics_path = exp_dir / "metrics.jsonl"
+        with open(metrics_path, "w", encoding="utf-8") as f:
+            for row in extra_logs:
+                f.write(json.dumps(row, cls=NumpyEncoder) + "\n")
 
     # ---------------------------------------------------------
     # 3. 保存结果数据到 solution.npz (替代 CSV 计算)
     # ---------------------------------------------------------
     # .npz 是保存多个 numpy 数组的标准格式，非常适合保存矩阵 X, Y 和 历史记录
     npz_path = exp_dir / "solution.npz"
+
+    # ===== 新增：把 extra_logs 的每个字段也存进 npz（可选）=====
+    extra_npz = {}
+    if extra_logs is not None and len(extra_logs) > 0:
+        keys = extra_logs[0].keys()
+        for k in keys:
+            extra_npz[f"metrics_{k}"] = np.array([row.get(k) for row in extra_logs], dtype=object)
+
     np.savez(
         npz_path,
         # 核心解
@@ -86,7 +106,8 @@ def save_experiment_results(
         F_c=F_c_opt,
         # 标量和历史
         best_val=best_val,
-        history=np.array(history)
+        history=np.array(history),
+        **extra_npz
     )
 
     # ---------------------------------------------------------
@@ -99,6 +120,7 @@ def save_experiment_results(
     print(f"[{algo_name}] Experiment saved to: {exp_dir}")
     print(f"  - Config: config.json")
     print(f"  - Data:   solution.npz")
+
 
 
 def load_and_analyze_results(exp_dir: Path):

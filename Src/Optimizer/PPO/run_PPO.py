@@ -39,7 +39,7 @@ PPO_hyperparams = {
     'lam': 0.95,
     'lr': 1e-4,
     'eps_clip': 0.15,
-    'max_epochs': 100,
+    'max_epochs': 200,
     'target_steps': 1024,
     'k_epochs': 10,
     'entropy_coef': 0.01,
@@ -47,10 +47,8 @@ PPO_hyperparams = {
     'grad_clip': 0.5,
     'obj_scale': 1000.0
 }
-PPO_best_val, PPO_best_sol, PPO_history = PPOAgent(
-    paras,
-    PPO_hyperparams
-).train()
+agent = PPOAgent(paras, PPO_hyperparams)
+PPO_best_val, PPO_best_sol, PPO_history = agent.train()
 
 
 # Log
@@ -61,5 +59,6 @@ save_experiment_results(
     best_val=PPO_best_val,
     best_sol=PPO_best_sol,
     history=PPO_history,
-    hyper_params=PPO_hyperparams
+    hyper_params=PPO_hyperparams,
+    extra_logs=agent.logs
 )

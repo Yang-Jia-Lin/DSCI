@@ -87,6 +87,7 @@ class PPOAgent:
 
         # 保存历史最优策略（用于最终 best checkpoint），不做频繁 rollback
         self.best_policy_state_dict = None
+        self.logs = []  # 每个 epoch 一个 dict
 
     @torch.no_grad()
     def sample_action(self, state: torch.Tensor):
@@ -119,10 +120,11 @@ class PPOAgent:
             ent_Y = state.new_zeros((1,))
 
         logprob = (logp_X + logp_Y).detach().squeeze(0)  # scalar
-        value = value.detach().view(-1)[0]              # scalar
-        entropy = (ent_X + ent_Y).detach().squeeze(0)   # scalar（可选返回）
+        value = value.detach().view(-1)[0]  # scalar
+        ent_X = ent_X.detach().squeeze(0)  # scalar
+        ent_Y = ent_Y.detach().squeeze(0)  # scalar
+        return x_idx.view(-1)[0], y.squeeze(0), logprob, value, ent_X, ent_Y
 
-        return x_idx.view(-1)[0], y.squeeze(0), logprob, value, entropy
 
     def _apply_action_to_XY(self, X: np.ndarray, Y: np.ndarray, user_i: int, x_idx: int, y_vec: np.ndarray):
         """
@@ -238,6 +240,11 @@ class PPOAgent:
             best_epoch_X = None
             best_epoch_Y = None
 
+            # 新增：统计 mean_obj & entropy
+            episode_final_objs = []
+            entropy_X_list = []
+            entropy_Y_list = []
+
             steps = 0
             while steps < target_steps:
                 # ---- 新 episode：以 baseline X,Y 开始 ----
@@ -251,14 +258,19 @@ class PPOAgent:
 
                     state = _build_state(i=i, n=self.paras.n, prev_obj=prev_obj).to(self.device)
 
-                    x_idx, y_vec_t, logprob, value, _entropy = self.sample_action(state)
+                    # 改成接收 entropy_X / entropy_Y
+                    x_idx, y_vec_t, logprob, value, ent_X, ent_Y = self.sample_action(state)
+                    entropy_X_list.append(float(ent_X.item()) if isinstance(ent_X, torch.Tensor) else float(ent_X))
+                    entropy_Y_list.append(float(ent_Y.item()) if isinstance(ent_Y, torch.Tensor) else float(ent_Y))
 
                     # 应用动作到第 i 个用户
                     X_new = X.copy()
                     Y_new = Y.copy()
                     y_vec_np = y_vec_t.detach().cpu().numpy().astype(np.float32)
                     X_new, Y_new = self._apply_action_to_XY(
-                        X_new, Y_new, user_i=i, x_idx=int(x_idx.item()) if isinstance(x_idx, torch.Tensor) else int(x_idx),
+                        X_new, Y_new,
+                        user_i=i,
+                        x_idx=int(x_idx.item()) if isinstance(x_idx, torch.Tensor) else int(x_idx),
                         y_vec=y_vec_np
                     )
 
@@ -268,7 +280,7 @@ class PPOAgent:
 
                     done = 1.0 if (i == self.paras.n - 1) else 0.0
 
-                    # 存 buffer（buffer 存的是：state(1,3)->squeeze, x_idx, y_vec, logprob, value, reward, done）
+                    # 存 buffer
                     self.buffer.add(
                         state.squeeze(0).detach().cpu(),
                         int(x_idx.item()) if isinstance(x_idx, torch.Tensor) else int(x_idx),
@@ -284,8 +296,10 @@ class PPOAgent:
                     prev_obj = new_obj
                     steps += 1
 
-                # episode 结束：记录本 epoch 中最好的 full objective（不是增量）
+                # episode 结束：final objective
                 final_obj = prev_obj
+                episode_final_objs.append(final_obj)
+
                 if final_obj > best_epoch_obj:
                     best_epoch_obj = final_obj
                     best_epoch_X = X.copy()
@@ -294,7 +308,12 @@ class PPOAgent:
             # 用 rollout 更新策略
             self.update_policy(epoch)
 
-            # 统计与 best checkpoint
+            # 统计 mean_obj / entropy
+            mean_epoch_obj = float(np.mean(episode_final_objs)) if len(episode_final_objs) > 0 else float("nan")
+            mean_entropy_X = float(np.mean(entropy_X_list)) if len(entropy_X_list) > 0 else float("nan")
+            mean_entropy_Y = float(np.mean(entropy_Y_list)) if len(entropy_Y_list) > 0 else float("nan")
+
+            # 统计与 best checkpoint（best_obj 仍按你原逻辑）
             history.append(best_epoch_obj)
             if best_epoch_obj > best_val:
                 best_val = best_epoch_obj
@@ -302,7 +321,23 @@ class PPOAgent:
                 self.best_policy_state_dict = {k: v.clone() for k, v in self.policy.state_dict().items()}
 
             latency, acc = get_lat_and_acc(best_epoch_X, best_epoch_Y, F_e, F_c, self.paras)
-            print(f"Epoch {epoch}: best_obj={best_epoch_obj}, latency={latency}, acc={acc}")
+            self.logs.append({
+                "epoch": int(epoch),
+                "best_obj": float(best_epoch_obj),
+                "mean_obj": float(mean_epoch_obj),
+                "latency": float(latency),
+                "acc": float(acc),
+                "entropy_X": float(mean_entropy_X),
+                "entropy_Y": float(mean_entropy_Y),
+                "steps_collected": int(steps),
+                "num_episodes": int(len(episode_final_objs)),
+            })
+            print(
+                f"Epoch {epoch}: "
+                f"best_obj={best_epoch_obj:.6f}, mean_obj={mean_epoch_obj:.6f}, "
+                f"latency={latency:.6f}, acc={acc:.6f}, "
+                f"entropy_X={mean_entropy_X:.6f}, entropy_Y={mean_entropy_Y:.6f}"
+            )
 
             # 收敛检测（窗口内波动很小就停）
             if len(history) > patience:
