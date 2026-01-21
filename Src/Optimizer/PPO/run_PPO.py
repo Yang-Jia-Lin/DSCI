@@ -43,7 +43,9 @@ PPO_hyperparams = {
     'target_steps': 1024,
     'k_epochs': 10,
     'entropy_coef': 0.01,
-    'entropy_decay': 0.995
+    'entropy_decay': 0.995,
+    'grad_clip': 0.5,
+    'obj_scale': 1000.0
 }
 PPO_best_val, PPO_best_sol, PPO_history = PPOAgent(
     paras,
