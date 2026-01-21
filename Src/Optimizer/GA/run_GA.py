@@ -26,7 +26,7 @@ paras = Paras(
     delta = NOISE_POWER,
     # Weights
     alpha=1,
-    beta=20
+    beta=5
 )
 paras.rates, paras.accs = parsing_rate_and_acc(paras)
 

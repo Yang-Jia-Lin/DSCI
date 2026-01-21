@@ -11,47 +11,6 @@ from Src.Optimizer.PPO.networks import ActorCritic
 from Src.Optimizer.PPO.buffer import RolloutBuffer
 
 
-# 约束 X
-def _project_X(X):
-    """ 保证 X 每行最多2个1，其余置0"""
-    for i in range(X.shape[0]):
-        if np.sum(X[i]) > 2:
-            # 直接随机保留2个
-            ones_idx = np.where(X[i]==1)[0]
-            keep_idx = np.random.choice(ones_idx, size=2, replace=False)
-            X[i] = 0
-            X[i][keep_idx] = 1
-    return X
-
-
-# 约束 Y
-def _clip_Y(Y, E):
-    """ 对 Y clip到[0,1]，并固定不可早退层(j not in E)为1 """
-    Y = np.clip(Y, 0, 1)
-    all_indices = np.arange(Y.shape[1])
-    fixed_indices = np.setdiff1d(all_indices, E)
-    Y[:, fixed_indices] = 1.0
-    return Y
-
-
-# 计算奖励
-def _compute_reward(X,Y,F_e,F_c,paras):
-    reward = objective(X,Y,F_e,F_c,paras)
-    if np.isnan(reward) or np.isinf(reward):
-         print(f"【Warning】: reward is nan or inf: {reward}\naction_X: {X}, action_Y: {Y}, f_e: {F_e}, f_c: {F_c}")
-         reward = 0
-    return reward
-
-
-# 随机初始化
-def _init_feasible_XY(paras):
-    n, m = paras.n, paras.m
-    X = np.random.randint(0, 2, (n, m))
-    X = _project_X(X)
-    Y = np.random.uniform(0, 1, (n, m))
-    Y = _clip_Y(Y, paras.E)
-    return X, Y
-
 # 展平 X+Y
 def _flatten_state(X, Y):
     return torch.tensor(np.concatenate([X.flatten(), Y.flatten()]), dtype=torch.float32).unsqueeze(0)

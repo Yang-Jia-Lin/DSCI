@@ -182,5 +182,5 @@ def load_and_analyze_results(exp_dir: Path):
 
 
 if __name__ == "__main__":
-    target_path = Path("D:\Coding\Python\DSCI\Result\PPO\PPO_20260103_225125")
+    target_path = Path("D:\Coding\Python\DSCI\Result\GA\GA_20260113_090630")
     load_and_analyze_results(target_path)
