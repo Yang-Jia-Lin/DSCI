@@ -89,18 +89,24 @@ class ActorCritic(nn.Module):
             beta_Y:   [B, action_dim_Y] (Beta beta  > 0)
             value:    [B, 1]
         """
+        # 共享层
         features = self.shared(state)
+
+        # X的分布输出（每个索引的选择概率）
         logits_X = self.actor_X(features)
 
+        # Y的分布输出（Beta分布的形状，由alpha和beta决定）
         if self.action_dim_Y > 0:
             alpha_raw = self.actor_Y_alpha(features)
             beta_raw = self.actor_Y_beta(features)
             alpha_Y = F.softplus(alpha_raw) + self.beta_eps
             beta_Y = F.softplus(beta_raw) + self.beta_eps
-        else:
-            # 允许没有早退层的情况
+        else: # 没有早退层
             alpha_Y = state.new_zeros((state.shape[0], 0))
             beta_Y = state.new_zeros((state.shape[0], 0))
 
+        # 价值网络输出（标量）
         value = self.critic(features)
+
+        # 返回三组输出（X、Y、V）
         return logits_X, alpha_Y, beta_Y, value
