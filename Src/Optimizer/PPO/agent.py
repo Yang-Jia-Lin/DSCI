@@ -20,18 +20,35 @@ from Src.Optimizer.PPO.buffer import RolloutBuffer
 
 
 # ---------- 状态构造（紧凑 Markov） ----------
-def _build_state(i: int, n: int, prev_obj: float, obj_scale: float = 1000.0) -> torch.Tensor:
+def _build_state(
+    i: int,
+    n: int,
+    prev_obj: float,
+    F_e: np.ndarray,
+    F_c: np.ndarray,
+    f_e_max: float,
+    f_c_max: float,
+    obj_scale: float = 1000.0,
+) -> torch.Tensor:
     """
-    state = [i_norm, remaining_norm, tanh(prev_obj/scale)]
-    - i_norm: 当前用户索引归一化
-    - remaining_norm: 剩余用户比例（作为“remaining_resource/remaining_steps”的简化版本）
-    - prev_obj: 当前已决策到 i-1 的全局目标值（用 tanh 压缩避免数值爆）
+    state = [i_norm, remaining_norm, tanh(prev_obj/scale), fe_i_norm, fc_i_norm]
     """
     i_norm = float(i) / float(max(n, 1))
     remaining_norm = float(n - i) / float(max(n, 1))
-    prev_obj_squashed = np.tanh(prev_obj / obj_scale)
-    s = torch.tensor([i_norm, remaining_norm, prev_obj_squashed], dtype=torch.float32).unsqueeze(0)
+    prev_obj_squashed = float(np.tanh(prev_obj / obj_scale))
+
+    # F_e, F_c are (n,1) in your code
+    fe_i = float(F_e[i, 0]) if F_e.ndim == 2 else float(F_e[i])
+    fc_i = float(F_c[i, 0]) if F_c.ndim == 2 else float(F_c[i])
+    fe_i_norm = fe_i / float(max(f_e_max, 1e-12))
+    fc_i_norm = fc_i / float(max(f_c_max, 1e-12))
+
+    s = torch.tensor(
+        [i_norm, remaining_norm, prev_obj_squashed, fe_i_norm, fc_i_norm],
+        dtype=torch.float32
+    ).unsqueeze(0)
     return s
+
 
 
 # ---------- 初始化一个可行解（给未决策用户用作 baseline） ----------
@@ -69,7 +86,7 @@ class PPOAgent:
         self.entropy_decay = hyperparams.get("entropy_decay", 0.99) # 熵系数衰减
 
         # ---------- 维度 ----------
-        self.state_dim = 3 # 状态：3 维
+        self.state_dim = 5 # 状态：5 维
         self.action_dim_Y = len(self.paras.E) # 动作 Y：早退层（|E|）
 
         # ---------- 网络 ----------
@@ -252,7 +269,16 @@ class PPOAgent:
                     if steps >= target_steps:
                         break
 
-                    state = _build_state(i=i, n=self.paras.n, prev_obj=prev_obj).to(self.device)
+                    state = _build_state(
+                        i=i,
+                        n=self.paras.n,
+                        prev_obj=prev_obj,
+                        F_e=F_e,
+                        F_c=F_c,
+                        f_e_max=self.paras.f_e_max,
+                        f_c_max=self.paras.f_c_max,
+                    ).to(self.device)
+
                     x_idx, y_vec_t, logprob, value, ent_X, ent_Y = self.sample_action(state)
                     entropy_X_list.append(float(ent_X.item()) if isinstance(ent_X, torch.Tensor) else float(ent_X))
                     entropy_Y_list.append(float(ent_Y.item()) if isinstance(ent_Y, torch.Tensor) else float(ent_Y))
@@ -316,8 +342,8 @@ class PPOAgent:
                 # 4. 转成 objective 需要的形状
                 new_F_e = new_f_e.reshape(self.paras.n, 1).astype(np.float32)
                 new_F_c = new_f_c.reshape(self.paras.n, 1).astype(np.float32)
-                # 5. EMA 平滑，避免 epoch 间资源剧烈震荡导致训练不稳
-                eta = float(self.hparams.get("outer_ema", 0.3))  # 0~1
+                # 5. EMA 平滑，避免 epoch 之间资源剧烈震荡导致训练不稳
+                eta = float(self.hparams.get("outer_ema", 0.02))  # 0~1
                 F_e = ((1 - eta) * F_e + eta * new_F_e).astype(np.float32)
                 F_c = ((1 - eta) * F_c + eta * new_F_c).astype(np.float32)
 
