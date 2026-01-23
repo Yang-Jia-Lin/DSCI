@@ -16,6 +16,7 @@ LAYER_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_layer_stats.csv"
 RESULT_GA_PATH = "D:/Coding/Python/DSCI/Result/GA"
 RESULT_PPO_PATH = "D:/Coding/Python/DSCI/Result/PPO"
 RESULT_BF_PATH = "D:/Coding/Python/DSCI/Result/BF"
+RESULT_DYNAMIC_PATH = "D:/Coding/Python/DSCI/Result/Dynamic"
 
 # User
 NUM_USERS = 10
@@ -32,7 +33,7 @@ COMPUTE_SIZE_LAYERS = df["approx_flops"].astype(int).tolist()
 
 # Compute
 USER_FREQs = NUM_USERS * [1]    # 用户每人 2 GHz
-EDGE_MAX_FREQ = 20.0            # 边缘服务器 10 GHz
+EDGE_MAX_FREQ = 15.0            # 边缘服务器 30 GHz
 CLOUD_MAX_FREQ = 50.0           # 云服务器 50 GHz
 
 # Communicate

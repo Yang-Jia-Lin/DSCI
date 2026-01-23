@@ -6,13 +6,6 @@ from Src.paras import *
 from Src.Utils.parsing_data import parsing_rate_and_acc
 from Src.Optimizer.PPO.agent import PPOAgent
 from Src.Utils.log_function import save_experiment_results
-from pathlib import Path
-import pandas as pd
-import numpy as np
-from Src.paras import *
-from Src.Utils.parsing_data import parsing_rate_and_acc
-from Src.Optimizer.PPO.agent import PPOAgent
-from Src.Utils.log_function import save_experiment_results
 
 
 def run_dsci_experiment(custom_paras_dict=None, custom_ppo_hyperparams=None, save_log=True):

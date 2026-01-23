@@ -169,6 +169,58 @@ def compute_total_latency(X, P, F_e, F_c, paras):
     return T
 
 
+def compute_5_latency(X, P, F_e, F_c, paras):
+    n = X.shape[0]
+    m = X.shape[1]
+    C = paras.C
+    D = paras.D
+    H = paras.H_u
+    F_u = paras.F_u
+    b_e = paras.b_e
+    b_c = paras.b_c
+    G = paras.G
+    delta = paras.delta
+
+    T1 = np.zeros(n, dtype=np.float64)
+    T2 = np.zeros(n, dtype=np.float64)
+    T3 = np.zeros(n, dtype=np.float64)
+    T4 = np.zeros(n, dtype=np.float64)
+    T5 = np.zeros(n, dtype=np.float64)
+    cut_points = compute_exit_points(X, paras)
+
+    for i in range(n):
+        cut0 = int(cut_points[i][0])
+        cut1 = int(cut_points[i][1])
+
+        P_i = P[i]
+        f_e = float(np.asarray(F_e).reshape(-1)[i])
+        f_c = float(np.asarray(F_c).reshape(-1)[i])
+        f_u = float(np.asarray(F_u).reshape(-1)[i])
+        h_i = float(np.asarray(H).reshape(-1)[i])
+
+        # ---- Local computation ----
+        if cut0 > 0:
+            T1[i] = _compute_local_computation_delay((cut0, cut1), P_i, C, f_u)
+
+        # 进入 edge 的概率（退出层 >= cut0）
+        prob_reach_edge = float(sum(P_i[cut0:])) if 0 <= cut0 < m else 0.0
+
+        # ---- U->E transmission & Edge computation ----
+        if 0 <= cut0 < m and prob_reach_edge > 0:
+            T2[i] = prob_reach_edge * _compute_end_to_edge_delay(float(D[cut0]), h_i, b_e, G, delta)
+            T3[i] = _compute_edge_computation_delay((cut0, cut1), P_i, C, f_e)
+
+        # 进入 cloud 的概率（退出层 >= cut1），仅当 cut1 有效且存在 cloud 段
+        prob_reach_cloud = float(sum(P_i[cut1:])) if 0 <= cut1 < m else 0.0
+
+        # ---- E->C transmission & Cloud computation ----
+        if 0 <= cut1 < m and cut1 != -1 and prob_reach_cloud > 0:
+            d_i_2 = float(D[cut1])
+            T4[i] =  prob_reach_cloud * _compute_edge_to_cloud_delay(d_i_2, b_c)
+            T5[i] =  _compute_cloud_computation_delay((cut0, cut1), P_i, C, f_c)
+    return T1, T2, T3, T4, T5
+
+
 # ==========================================
 # Test Block for Latency
 # ==========================================
