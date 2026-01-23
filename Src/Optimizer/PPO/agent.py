@@ -240,8 +240,9 @@ class PPOAgent:
         best_sol = None
         history = []
 
-        patience = 10
-        tolerance = 1e-3
+        min_epochs = 100  # 强制最小训练轮数（观察图表，100次之前仍在快速上升）
+        patience = 20  # 检测窗口大小
+        rel_tolerance = 1e-4  # 相对容忍度（例如：0.01% 的改进）
 
         # 初始化资源
         F_e = np.ones((self.paras.n, 1), dtype=np.float32) * (self.paras.f_e_max / self.paras.n)
@@ -383,14 +384,21 @@ class PPOAgent:
                 f"inner_best_obj={inner_best_obj:.6f}, outer_obj={outer_obj:.6f}, "
                 f"inner_mean_obj={mean_epoch_obj:.6f}, "
                 f"latency={latency:.6f}, acc={acc:.6f}, "
-                f"entropy_X={mean_entropy_X:.6f}, entropy_Y={mean_entropy_Y:.6f}\n"
+                f"entropy_X={mean_entropy_X:.6f}, entropy_Y={mean_entropy_Y:.6f}"
             )
 
             # 收敛检测（窗口内波动很小就停）
-            if len(history) > patience:
-                recent_window = history[-patience:]
-                if np.std(recent_window) < tolerance:
-                    print(f"[Early Stop] Converged at epoch {epoch} with std: {np.std(recent_window):.5f}")
+
+            if epoch > min_epochs:
+                current_window = history[-patience:]
+                previous_window = history[-2 * patience: -patience]
+                curr_mean = np.mean(current_window)
+                prev_mean = np.mean(previous_window)
+                rel_change = abs(curr_mean - prev_mean) / (abs(prev_mean) + 1e-10)
+                cv = np.std(current_window) / (abs(curr_mean) + 1e-10)
+                if rel_change < rel_tolerance and cv < (rel_tolerance * 5):
+                    print(f"[Early Stop] Converged!")
+                    print(f"Epoch: {epoch}, Rel Change: {rel_change:.6f}, CV: {cv:.6f}")
                     break
 
         return best_val, best_sol, history
