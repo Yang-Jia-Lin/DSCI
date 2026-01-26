@@ -94,10 +94,10 @@ def dynamic_without_data(n, F_u, H_u):
 
 if __name__ == "__main__":
     # 没有解的时候：
-    n = 10
-    F_u = np.array([0.1] * 3 + [2.0] * 4 + [8.0] * 3, dtype=np.float32)
-    H_u = np.array([2.0] * 10, dtype=np.float32)
-    dynamic_without_data(n, F_u, H_u)
+    # n = 10
+    # F_u = np.array([0.1] * 3 + [2.0] * 4 + [8.0] * 3, dtype=np.float32)
+    # H_u = np.array([2.0] * 10, dtype=np.float32)
+    # dynamic_without_data(n, F_u, H_u)
 
     # 有解的时候：
-    # dynamic_with_data(Path("D:\Coding\Python\DSCI\Result\PPO\PPO_20260123_150230"))
+    dynamic_with_data(Path("D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260126_104604"))

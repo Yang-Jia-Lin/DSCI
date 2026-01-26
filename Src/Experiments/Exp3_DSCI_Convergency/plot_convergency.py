@@ -22,8 +22,3 @@ def plot_convergence(history, data_name: str = "Convergence", save_dir: Path = N
         print(f"收敛曲线已保存至: {save_path}")
 
     plt.show()
-
-
-if __name__ == "__main__":
-    # from Src.paras import RESULT_TEST_PATH
-    print("todo")
