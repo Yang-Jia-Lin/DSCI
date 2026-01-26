@@ -1,31 +1,28 @@
 """
 Src/Experiments/Exp4_EE_Model/plot_combine_resnet.py
 """
-import os
 import numpy as np
 import pandas as pd
-import matplotlib as mpl
 import matplotlib.pyplot as plt
+from pathlib import Path
+from Src.Utils.plot_utils import set_ieee_style, save_fig_for_ieee
 
 
-def plot_expectation_vs_threshold(csv_rate_path, csv_acc_path, result_folder, m=8, exit_layer=[3, 6]):
+def plot_expectation_vs_threshold(csv_rate_path, csv_acc_path, result_folder):
     """
     结合计算延迟期望(E_t)和精度期望(E_acc)绘制双轴曲线。
-
-    :param csv_rate_path: 包含率(rates)数据的 CSV 路径
-    :param csv_acc_path: 包含精度(accs)数据的 CSV 路径
-    :param result_folder: 结果保存文件夹
-    :param m: 网络总层数/阶段数
-    :param exit_layer: Early Exit 所在的层索引列表
     """
-    # 1. 样式配置
-    mpl.rcParams['pdf.fonttype'] = 42
-    mpl.rcParams['ps.fonttype'] = 42
-    plt.rcParams['font.sans-serif'] = ['Times New Roman']
-    plt.rcParams['axes.unicode_minus'] = False
+    m = 8
+    exit_layer = [3, 6]
+    csv_rate_path = Path(csv_rate_path)
+    csv_acc_path = Path(csv_acc_path)
+    result_folder = Path(result_folder)
 
-    # 2. 数据读取
-    if not os.path.exists(csv_rate_path) or not os.path.exists(csv_acc_path):
+    # 1. 一键套用模板 (自动处理字体、线宽、基础尺寸)
+    set_ieee_style(mode='single')
+
+    # 2. 数据读取与校验
+    if not csv_rate_path.exists() or not csv_acc_path.exists():
         print("错误: 请检查输入的 CSV 路径是否存在。")
         return
 
@@ -65,48 +62,49 @@ def plot_expectation_vs_threshold(csv_rate_path, csv_acc_path, result_folder, m=
 
     E_acc = np.sum(P * acc_matrix, axis=1)
 
-    # 5. 绘图
-    fig, ax1 = plt.subplots(figsize=(6, 4), dpi=300)
+    # 5. 绘图开始
+    fig, ax1 = plt.subplots()
 
-    # 左轴: E_t
-    lns1 = ax1.plot(df_rate['threshold'], E_t, color='black', marker='o', markersize=5,
-                    label='Computation Latency Expectation')
-    ax1.set_xlabel('Threshold', fontsize=20)
-    ax1.set_ylabel('Computation Latency Expectation', fontsize=16)
-    ax1.tick_params(axis='x', labelsize=17)
-    ax1.tick_params(axis='y', labelsize=17)
+    # 配色方案
+    color_et = 'black'
+    color_acc = '#d62728'  # IEEE 常用深红色
+
+    # 左轴: E_t (延迟)
+    # 使用 markevery=10 稀释标记点，linewidth 设为 1.0 防太粗
+    lns1 = ax1.plot(df_rate['threshold'], E_t, color=color_et, marker='o', markevery=3, label='Latency Expect')
+
+    ax1.set_xlabel('Threshold')
+    ax1.set_ylabel('Latency Expectation', color=color_et)
+    ax1.tick_params(axis='y', labelcolor=color_et)
     ax1.set_xlim(0, 1)
-    ax1.set_ylim(3.7, 8.1)
-    ax1.grid(True, linestyle='--', alpha=0.5)
+    ax1.set_ylim(3.5, 8.5)
 
-    # 右轴: E_acc
+    # 右轴: E_acc (精度)
     ax2 = ax1.twinx()
-    lns2 = ax2.plot(df_acc['threshold'], E_acc, color='red', marker='^', markersize=5,
-                    label='Accuracy Expectation')
-    ax2.set_ylabel('Accuracy Expectation (%)', fontsize=20)
-    ax2.tick_params(axis='y', labelsize=17)
-    ax2.set_ylim(60, 100)
+    lns2 = ax2.plot(df_acc['threshold'], E_acc, color=color_acc, marker='^', markevery=3, label='Accuracy Expect')
 
-    # 合并图例
+    ax2.set_ylabel('Accuracy Expectation (%)', color=color_acc)
+    ax2.tick_params(axis='y', labelcolor=color_acc)
+    ax2.set_ylim(60, 100)
+    ax2.grid(False)  # 双轴图通常关闭右轴网格，防止画面太乱
+
+    # 6. 图例合并与优化
     lns = lns1 + lns2
     labs = [l.get_label() for l in lns]
-    fig.legend(lns, labs, loc='upper left', bbox_to_anchor=(0.09, 0.96), ncol=1, fontsize=16, frameon=True)
+    # 将图例放在图表正上方，避免遮挡数据
+    ax1.legend(lns, labs, loc='lower center', bbox_to_anchor=(0.5, 0.93),
+               ncol=2, frameon=False, fontsize=10)
 
-    # 6. 保存与显示
-    if not os.path.exists(result_folder):
-        os.makedirs(result_folder)
-
-    base_name = os.path.splitext(os.path.basename(csv_rate_path))[0]
-    save_path = os.path.join(result_folder, f"{base_name}_combined_expectation.png")
-
-    plt.tight_layout()
-    plt.savefig(save_path, format='png')
-    print(f"双轴期望图已保存至: {save_path}")
+    # 7. 保存与显示
+    result_folder.mkdir(parents=True, exist_ok=True)
+    save_name = result_folder / f"{csv_rate_path.stem}_combined_expectation"
+    save_fig_for_ieee(save_name)
+    print(f"双轴期望图已保存至: {save_name}.pdf")
     plt.show()
 
 
 if __name__ == "__main__":
     from Src.paras import RESULT_EE_MODEL_PATH
-    rate_csv = "D:\Coding\Python\DSCI\Data\Resnet50_rates.csv"
-    acc_csv = "D:\Coding\Python\DSCI\Data\Resnet50_accs.csv"
+    rate_csv = Path(r"D:\Coding\Python\DSCI\Data\Resnet50_rates.csv")
+    acc_csv = Path(r"D:\Coding\Python\DSCI\Data\Resnet50_accs.csv")
     plot_expectation_vs_threshold(rate_csv, acc_csv, RESULT_EE_MODEL_PATH)

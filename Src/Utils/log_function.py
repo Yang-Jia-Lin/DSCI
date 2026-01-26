@@ -9,7 +9,7 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, Union, List
 from pathlib import Path
-from Src.Experiments.Exp2_Dynamic import plot_XY
+from Src.Experiments.Exp2_Dynamic.plot_decision import plot_XY
 from Src.Experiments.Exp3_DSCI_Convergency.plot_convergency import plot_convergence
 from Src.Utils.utils_function import NumpyEncoder, open_file
 from Src.paras import Paras
@@ -91,7 +91,6 @@ def load_and_analyze_results(exp_dir: Path, analysis = True):
 
     if not json_path.exists() or not npz_path.exists():
         print(f"Error: 路径 {exp_dir} 下缺少 config.json 或 solution.npz")
-        return
 
     # ======== 1) 加载数据 ========
     with open(json_path, "r", encoding="utf-8") as f:
