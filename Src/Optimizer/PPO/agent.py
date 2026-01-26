@@ -14,9 +14,9 @@ import torch.nn.functional as F
 
 from Src.Objective.objective import objective, get_lat_and_acc
 from Src.Objective.compute_P import compute_layer_exit_probs
-from Src.Utils.compute_paras import compute_iota_kappa, allocate_resources
 from Src.Optimizer.PPO.networks import ActorCritic
 from Src.Optimizer.PPO.buffer import RolloutBuffer
+from Src.Utils.parsing_data import split_points_matrix
 
 
 # ---------- 状态构造（紧凑 Markov） ----------
@@ -50,7 +50,6 @@ def _build_state(
     return s
 
 
-
 # ---------- 初始化一个可行解（给未决策用户用作 baseline） ----------
 def _init_feasible_XY(paras):
     """
@@ -75,6 +74,30 @@ def _init_feasible_XY(paras):
         if 0 <= ee < m:
             Y[:, ee] = 1.0
     return X, Y
+
+
+def compute_iota_kappa(X, compute_sizes, exit_prob):
+    """计算拉格朗日参数 iota 和 kappa"""
+    n, m = X.shape
+    c = np.asarray(compute_sizes)
+    iota = np.zeros(n)
+    kappa = np.zeros(n)
+    split_pts = split_points_matrix(X)
+    for i in range(n):
+        p1, p2 = split_pts[i]
+        for j in range(p1 + 1, p2 + 1):
+            iota[i]  += exit_prob[i, j] * c[p1 + 1 : j + 1].sum()
+        for j in range(p2 + 1, m):
+            kappa[i] += exit_prob[i, j] * c[p2 + 1 : j + 1].sum()
+    return iota, kappa
+
+
+def allocate_resources(iota, kappa, f_e_max, f_c_max):
+    """计算凸优化后的资源分配"""
+    sqrt_i, sqrt_k = np.sqrt(iota + 1e-12), np.sqrt(kappa + 1e-12)
+    f_e = f_e_max * sqrt_i / max(sqrt_i.sum(), 1e-12)
+    f_c = f_c_max * sqrt_k / max(sqrt_k.sum(), 1e-12)
+    return f_e, f_c
 
 
 class PPOAgent:

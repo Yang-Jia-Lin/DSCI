@@ -1,9 +1,8 @@
 """
 Src/Optimizer/PPO/run_PPO.py
 """
-
-from Src.paras import *
-from Src.Utils.parsing_data import parsing_rate_and_acc
+from pathlib import Path
+from Src.paras import Paras, RESULT_PPO_PATH
 from Src.Optimizer.PPO.agent import PPOAgent
 from Src.Utils.log_function import save_experiment_results
 
@@ -12,22 +11,10 @@ def run_dsci_experiment(custom_paras_dict=None, custom_ppo_hyperparams=None, sav
     """
     封装 DSCI 运行逻辑，支持动态参数注入
     """
-    # 1. 初始化基础参数
-    paras = Paras(
-        n=NUM_USERS, m=NUM_LAYERS, E=EARLY_EXIT_LAYERS, D=DATA_SIZE_LAYERS, C=COMPUTE_SIZE_LAYERS,
-        G=BASE_STATION_POWER, delta=NOISE_POWER, alpha=1, beta=5,
-        f_e_max=EDGE_MAX_FREQ, f_c_max=CLOUD_MAX_FREQ, H_u=CHANNEL_GAINS_USERS,
-        F_u=USER_FREQs, b_e=BANDWIDTH_EDGE, b_c=BANDWIDTH_CLOUD
-    )
+    # 1. 初始化参数
+    paras = Paras.from_dict(custom_paras_dict or {})
 
-    # 2. 动态实验参数 (例如修改 F_u 或 b_e)
-    if custom_paras_dict:
-        for key, value in custom_paras_dict.items():
-            setattr(paras, key, value)
-    # 参数更新后必须重新计算通信速率
-    paras.rates, paras.accs = parsing_rate_and_acc(paras)
-
-    # 3. 设置 PPO 超参数
+    # 2. PPO 超参数
     ppo_params = {
         'gamma': 0.95,
         'lam': 0.95,
@@ -44,15 +31,15 @@ def run_dsci_experiment(custom_paras_dict=None, custom_ppo_hyperparams=None, sav
     if custom_ppo_hyperparams:
         ppo_params.update(custom_ppo_hyperparams)
 
-    # 4. 算法优化
+    # 3. 算法优化
     agent = PPOAgent(paras, ppo_params)
     best_val, best_sol, history = agent.train()
 
-    # 5. 日志保存
+    # 4. 日志保存
     if save_log:
         save_experiment_results(
             save_dir=Path(RESULT_PPO_PATH),
-            algo_name="PPO_Exp",
+            algo_name="PPO",
             paras=paras,
             best_val=best_val,
             best_sol=best_sol,
@@ -61,7 +48,7 @@ def run_dsci_experiment(custom_paras_dict=None, custom_ppo_hyperparams=None, sav
             extra_logs=agent.logs
         )
 
-    return best_val, best_sol, history
+    return best_val, best_sol, history, paras
 
 
 if __name__ == '__main__':

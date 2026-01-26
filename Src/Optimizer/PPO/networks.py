@@ -1,12 +1,7 @@
 """
 ActorCritic 网络
 Src/Optimizer/PPO/networks.py
-
-修改：
-- X：单个 categorical over 所有合法 (k1,k2) 组合，actor 输出 logits 向量
-- Y：Beta 分布参数化，输出 alpha/beta（>0）
 """
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

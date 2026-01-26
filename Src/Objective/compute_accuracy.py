@@ -2,7 +2,8 @@
 计算全部任务的准确率
 Src/Objective/compute_accuracy.py
 """
-from Src.paras import *
+import numpy as np
+from Src.paras import Paras
 
 
 def _get_acc(Y_ij, j, exit_rates):
@@ -35,27 +36,7 @@ def compute_expected_accuracy(Y, P, paras):
 if __name__ == "__main__":
     from Src.Utils.parsing_data import parsing_rate_and_acc
     from Src.Objective.compute_P import compute_layer_exit_probs
-    paras = Paras(
-        # Users
-        n=NUM_USERS,
-        # Model
-        m=NUM_LAYERS,
-        E=EARLY_EXIT_LAYERS,
-        D=DATA_SIZE_LAYERS,
-        C=COMPUTE_SIZE_LAYERS,
-        # Resource
-        F_u=USER_FREQs,
-        f_e_max=EDGE_MAX_FREQ,
-        f_c_max=CLOUD_MAX_FREQ,
-        H_u=CHANNEL_GAINS_USERS,
-        b_e=BANDWIDTH_EDGE,
-        b_c=BANDWIDTH_CLOUD,
-        G=BASE_STATION_POWER,
-        delta=NOISE_POWER,
-        # Weights
-        alpha=1,
-        beta=20
-    )
+    paras = Paras()
     paras.rates, paras.accs = parsing_rate_and_acc(paras)
     n = paras.n
     m = paras.m

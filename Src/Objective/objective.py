@@ -2,7 +2,6 @@
 目标函数
 Src/Objective/Objective.py
 """
-
 from Src.Objective.compute_P import compute_layer_exit_probs
 from Src.Objective.compute_latency import compute_total_latency
 from Src.Objective.compute_accuracy import compute_expected_accuracy
@@ -37,38 +36,14 @@ def get_lat_and_acc(X, Y, F_e, F_c, paras):
 # Test Block for Objective
 # ==========================================
 if __name__ == "__main__":
-
-    from Src.paras import *
-    from Src.Utils.parsing_data import parsing_rate_and_acc
-
+    from Src.paras import Paras
+    import numpy as np
     print("\n" + "=" * 20 + " Objective Test " + "=" * 20)
 
     # -------------------------------------------------
     # 1. 初始化参数
     # -------------------------------------------------
-    paras = Paras(
-        # Users
-        n=NUM_USERS,
-        # Model
-        m=NUM_LAYERS,
-        E=EARLY_EXIT_LAYERS,
-        D=DATA_SIZE_LAYERS,
-        C=COMPUTE_SIZE_LAYERS,
-        # Resource
-        F_u=USER_FREQs,
-        f_e_max=EDGE_MAX_FREQ,
-        f_c_max=CLOUD_MAX_FREQ,
-        H_u=CHANNEL_GAINS_USERS,
-        b_e=BANDWIDTH_EDGE,
-        b_c=BANDWIDTH_CLOUD,
-        G=BASE_STATION_POWER,
-        delta=NOISE_POWER,
-        # Weights
-        alpha=1,
-        beta=20
-    )
-    paras.rates, paras.accs = parsing_rate_and_acc(paras)
-
+    paras = Paras()
     n, m = paras.n, paras.m
 
     # -------------------------------------------------

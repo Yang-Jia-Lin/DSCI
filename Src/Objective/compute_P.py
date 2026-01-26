@@ -2,8 +2,8 @@
 计算退出概率
 Src/Objective/compute_P.py
 """
-
 import numpy as np
+
 
 # one user in one layer (p_ij)
 def _get_independent_prob(Y_ij, j, exit_rates):
@@ -48,24 +48,12 @@ def compute_layer_exit_probs(Y, paras):
 # Test Block
 # ==========================================
 if __name__ == "__main__":
-    from Src.paras import Paras, NUM_USERS, NUM_LAYERS, EARLY_EXIT_LAYERS, \
-        DATA_SIZE_LAYERS, COMPUTE_SIZE_LAYERS, USER_FREQs, EDGE_MAX_FREQ, \
-        CLOUD_MAX_FREQ, CHANNEL_GAINS_USERS, BANDWIDTH_EDGE, BANDWIDTH_CLOUD, \
-        BASE_STATION_POWER, NOISE_POWER
-    from Src.Utils.parsing_data import parsing_rate_and_acc
+    from Src.paras import Paras
     print(">>> 正在初始化参数并读取真实数据...")
 
-
     # 初始化 Paras 对象
-    paras = Paras(
-        n=NUM_USERS, m=NUM_LAYERS, E=EARLY_EXIT_LAYERS, D=DATA_SIZE_LAYERS, C=COMPUTE_SIZE_LAYERS,
-        F_u=USER_FREQs, f_e_max=EDGE_MAX_FREQ, f_c_max=CLOUD_MAX_FREQ, H_u=CHANNEL_GAINS_USERS,
-        b_e=BANDWIDTH_EDGE, b_c=BANDWIDTH_CLOUD, G=BASE_STATION_POWER, delta=NOISE_POWER,
-        alpha=1, beta=20
-    )
-    paras.rates, paras.accs = parsing_rate_and_acc(paras)
+    paras = Paras()
     print(f">>> 数据加载完成. Rates shape: {paras.rates.shape}")
-
 
     n = paras.n
     m = paras.m

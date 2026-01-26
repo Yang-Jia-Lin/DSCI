@@ -1,13 +1,13 @@
 """
 Src/Utils/log_function.py
 """
-
+import os
+import platform
+import subprocess
 import time
 import json
 import numpy as np
 from pathlib import Path
-
-from Src.Utils.device import open_file
 from Src.Utils.plot_function import plot_decisions, plot_convergence
 
 
@@ -27,6 +27,16 @@ class NumpyEncoder(json.JSONEncoder):
                 return f"<numpy_array shape={obj.shape} dtype={obj.dtype}>"
             return obj.tolist()
         return super(NumpyEncoder, self).default(obj)
+
+
+def open_file(file_path):
+    """跨平台打开文件"""
+    if platform.system() == "Windows":
+        os.startfile(file_path)
+    elif platform.system() == "Darwin":  # macOS
+        subprocess.run(["open", str(file_path)])
+    else:  # Linux
+        subprocess.run(["xdg-open", str(file_path)])
 
 
 def save_experiment_results(
@@ -120,7 +130,6 @@ def save_experiment_results(
     print(f"[{algo_name}] Experiment saved to: {exp_dir}")
     print(f"  - Config: config.json")
     print(f"  - Data:   solution.npz")
-
 
 
 def load_and_analyze_results(exp_dir: Path):

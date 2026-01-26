@@ -1,13 +1,7 @@
 """
 rollout 缓冲区
 Src/Optimizer/PPO/buffer.py
-
-修改：
-- actions_X: categorical index (Long)
-- actions_Y: Beta samples in [0,1], shape = [action_dim_Y]
-- logprobs: total logprob (logp_X + logp_Y), shape = []
 """
-
 import torch
 
 

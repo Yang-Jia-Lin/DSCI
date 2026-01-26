@@ -2,11 +2,10 @@
 计算所有任务总时延
 Src/Objective/compute_latency.py
 """
-
-from Src.paras import *
+import numpy as np
+from Src.paras import Paras
 from Src.Objective.compute_P import compute_layer_exit_probs
 from Src.Objective.compute_exit_points import compute_exit_points
-from Src.Utils.parsing_data import parsing_rate_and_acc
 
 
 def _compute_end_to_edge_delay(d_i, h_i, B_e, G, delta):
@@ -226,13 +225,7 @@ def compute_5_latency(X, P, F_e, F_c, paras):
 # ==========================================
 if __name__ == "__main__":
     print(">>> 初始化参数...")
-    paras = Paras(
-        n=NUM_USERS, m=NUM_LAYERS, E=EARLY_EXIT_LAYERS, D=DATA_SIZE_LAYERS, C=COMPUTE_SIZE_LAYERS,
-        F_u=USER_FREQs, f_e_max=EDGE_MAX_FREQ, f_c_max=CLOUD_MAX_FREQ, H_u=CHANNEL_GAINS_USERS,
-        b_e=BANDWIDTH_EDGE, b_c=BANDWIDTH_CLOUD, G=BASE_STATION_POWER, delta=NOISE_POWER,
-        alpha=1, beta=20
-    )
-    paras.rates, paras.accs = parsing_rate_and_acc(paras)
+    paras = Paras()
     n, m = paras.n, paras.m
 
     # 2. 准备输入数据
