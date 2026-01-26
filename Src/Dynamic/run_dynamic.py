@@ -50,4 +50,4 @@ if __name__ == "__main__":
     dynamic_without_data(n, F_u, H_u)
 
     # 有解的时候：
-    # dynamic_with_data(Path("D:\Coding\Python\DSCI\Result\PPO\PPO_Exp_20260123_150230"))
+    # dynamic_with_data(Path("D:\Coding\Python\DSCI\Result\PPO\PPO_20260123_150230"))
