@@ -1,5 +1,5 @@
 """
-Src/Exp3_Convergency/plot_convergency.py
+Src/Exp3_DSCI_Convergency/plot_convergency.py
 """
 import matplotlib.pyplot as plt
 from datetime import datetime

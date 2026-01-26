@@ -3,10 +3,14 @@ Src/Utils/log_function.py
 """
 import time
 import json
+import torch
+import pandas as pd
 import numpy as np
+from datetime import datetime
+from typing import Dict, Union, List
 from pathlib import Path
-from Src.Exp2_Dynamic.plot_decision_XY import plot_XY
-from Src.Exp3_Convergency.plot_convergency import plot_convergence
+from Src.Experiments.Exp2_Dynamic import plot_XY
+from Src.Experiments.Exp3_DSCI_Convergency.plot_convergency import plot_convergence
 from Src.Utils.utils_function import NumpyEncoder, open_file
 from Src.paras import Paras
 
@@ -154,6 +158,37 @@ def load_and_analyze_results(exp_dir: Path, analysis = True):
     return X_opt, Y_opt, F_e, F_c, history, paras
 
 
+def save_model_weights(model: torch.nn.Module, model_name: str, weights_dir: Path) -> Path:
+    weights_dir.mkdir(parents=True, exist_ok=True)
+    model_path = weights_dir / f"{model_name}_{datetime.now().strftime('%m%d_%H%M')}.pth"
+    torch.save(model.state_dict(), model_path)
+    return model_path
+
+
+def save_train_log(
+        log_data: Dict[str, Union[List[float], List[int]]],
+        model_name: str,
+        log_dir: Path
+) -> Path:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"training_log_{model_name}_{datetime.now().strftime('%m%d_%H%M')}.csv"
+    csv_path = log_dir / filename
+    pd.DataFrame(log_data).to_csv(csv_path, index=False)
+    return csv_path
+
+
+def save_thr_data(
+        thr_data: pd.DataFrame,
+        data_name: str,
+        save_dir: Path
+) -> Path:
+    save_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{data_name}_{datetime.now().strftime('%m%d_%H%M')}.csv"
+    csv_path = save_dir / filename
+    thr_data.to_csv(csv_path, index=False)
+    return csv_path
+
+
 if __name__ == "__main__":
-    target_path = Path("D:\Coding\Python\DSCI\Result\GA\GA_20260113_090630")
+    target_path = Path("/Result/Optimize/GA\GA_20260113_090630")
     load_and_analyze_results(target_path)

@@ -1,5 +1,5 @@
 """
-Src/Exp2_Dynamic/plot_decision_XY.py
+Src/Exp2_Dynamic/plot_decision.py
 """
 import numpy as np
 import matplotlib.pyplot as plt

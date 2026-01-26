@@ -5,9 +5,8 @@ import json
 import numpy as np
 from pathlib import Path
 from datetime import datetime
-
-from Src.Exp2_Dynamic.plot_decision_XY import plot_X
-from Src.Exp2_Dynamic.plot_latency_stacked import plot_latency_stacked
+from Src.Experiments.Exp2_Dynamic.plot_decision import plot_X
+from Src.Experiments.Exp2_Dynamic.plot_latency_stacked import plot_latency_stacked
 from Src.paras import Paras, RESULT_DYNAMIC_PATH
 from Src.Optimizer.PPO.run_PPO import run_dsci_experiment
 from Src.Objective.compute_latency import compute_5_latency

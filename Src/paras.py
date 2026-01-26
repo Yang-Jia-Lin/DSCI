@@ -6,15 +6,26 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Path
+# Train Data Path
+DATA_ROOT = "D:/Coding/Python/DSCI/Data/CIFAR10"
+WEIGHTS_DIR = "D:/Coding/Python/DSCI/Data/Model_Checkpoints"
+
+# Simulate Path
 MODEL_NAME = "Resnet50"
 RATE_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_rates.csv"
 ACC_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_accs.csv"
 LAYER_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_layer_stats.csv"
-RESULT_GA_PATH = "D:/Coding/Python/DSCI/Result/GA"
-RESULT_PPO_PATH = "D:/Coding/Python/DSCI/Result/PPO"
-RESULT_BF_PATH = "D:/Coding/Python/DSCI/Result/BF"
-RESULT_DYNAMIC_PATH = "D:/Coding/Python/DSCI/Result/Dynamic"
+
+# Result Path
+RESULT_BASELINE_PATH = "D:/Coding/Python/DSCI/Result/Exp1_Baseline"
+RESULT_DYNAMIC_PATH = "D:/Coding/Python/DSCI/Result/Exp2_Dynamic"
+RESULT_CONVERGENCE_PATH = "D:/Coding/Python/DSCI/Result/Exp3_Convergence"
+RESULT_EE_MODEL_PATH = 'D:/Coding/Python/DSCI/Result/Exp4_EE_Model'
+
+# Optimize Path
+RESULT_GA_PATH = "D:/Coding/Python/DSCI/Result/Optimize/GA"
+RESULT_PPO_PATH = "D:/Coding/Python/DSCI/Result/Optimize/PPO"
+RESULT_BF_PATH = "D:/Coding/Python/DSCI/Result/Optimize/BF"
 RESULT_TEST_PATH = "D:/Coding/Python/DSCI/Result/Test"
 
 # User
@@ -22,7 +33,7 @@ NUM_USERS = 10
 
 # Model
 NUM_LAYERS = 128
-EARLY_EXIT_LAYERS = [57, 103] # 1 9 12 18 9 1
+EARLY_EXIT_LAYERS = [57, 103]  # 1 9 12 18 9 1
 NUM_EXIT_LAYERS = len(EARLY_EXIT_LAYERS)
 csv_path = Path(f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_layer_stats.csv")
 df = pd.read_csv(csv_path)
@@ -30,38 +41,38 @@ DATA_SIZE_LAYERS = df["num_bytes"].astype(int).tolist()
 COMPUTE_SIZE_LAYERS = df["approx_flops"].astype(int).tolist()
 
 # Compute
-USER_FREQs = NUM_USERS * [1]    # 用户每人 2 GHz
-EDGE_MAX_FREQ = 15.0            # 边缘服务器 30 GHz
-CLOUD_MAX_FREQ = 30.0           # 云服务器 50 GHz
+USER_FREQs = NUM_USERS * [1]  # 用户每人 2 GHz
+EDGE_MAX_FREQ = 15.0  # 边缘服务器 30 GHz
+CLOUD_MAX_FREQ = 30.0  # 云服务器 50 GHz
 
 # Communicate
-CHANNEL_GAINS_USERS = NUM_USERS * [2]   # 用户的信道增益
-BANDWIDTH_EDGE = 10.0       # 边缘服务器的带宽 20 MHz
-BANDWIDTH_CLOUD = 50.0      # 云服务器的带宽 50 MHz
-BASE_STATION_POWER = 1.0    # 基站的发射功率 W
-NOISE_POWER = 8e-11          # 高斯噪声 W
+CHANNEL_GAINS_USERS = NUM_USERS * [2]  # 用户的信道增益
+BANDWIDTH_EDGE = 10.0  # 边缘服务器的带宽 20 MHz
+BANDWIDTH_CLOUD = 50.0  # 云服务器的带宽 50 MHz
+BASE_STATION_POWER = 1.0  # 基站的发射功率 W
+NOISE_POWER = 8e-11  # 高斯噪声 W
 
 
 @dataclass
 class Paras:
     # 基础类型
-    n: int = NUM_USERS # 终端用户数量
-    m: int = NUM_LAYERS # DNN模型层数
-    f_e_max: float = float(EDGE_MAX_FREQ) # 边缘服务器最大频率
-    f_c_max: float = float(CLOUD_MAX_FREQ) # 云服务器最大频率
-    b_e: float = float(BANDWIDTH_EDGE) # 边缘服务器的带宽
-    b_c: float = float(BANDWIDTH_CLOUD) # 云服务器的带宽
-    G: float = float(BASE_STATION_POWER) # 基站的发射功率
-    delta: float = float(NOISE_POWER) # 噪声功率
-    alpha: float = 1.0 # delay 所占权重
-    beta: float = 5.0 # accuracy 所占权重
+    n: int = NUM_USERS  # 终端用户数量
+    m: int = NUM_LAYERS  # DNN模型层数
+    f_e_max: float = float(EDGE_MAX_FREQ)  # 边缘服务器最大频率
+    f_c_max: float = float(CLOUD_MAX_FREQ)  # 云服务器最大频率
+    b_e: float = float(BANDWIDTH_EDGE)  # 边缘服务器的带宽
+    b_c: float = float(BANDWIDTH_CLOUD)  # 云服务器的带宽
+    G: float = float(BASE_STATION_POWER)  # 基站的发射功率
+    delta: float = float(NOISE_POWER)  # 噪声功率
+    alpha: float = 1.0  # delay 所占权重
+    beta: float = 5.0  # accuracy 所占权重
 
     # 可变类型
-    E: list = field(default_factory=lambda: list(EARLY_EXIT_LAYERS)) # 早退层的集合
-    D: list = field(default_factory=lambda: list(DATA_SIZE_LAYERS)) # 各层的输出数据大小
-    C: list = field(default_factory=lambda: list(COMPUTE_SIZE_LAYERS)) # 各层的计算大小
-    F_u: np.ndarray = field(default_factory=lambda: np.array(USER_FREQs)) # 每个用户的处理频率
-    H_u: np.ndarray = field(default_factory=lambda: np.array(CHANNEL_GAINS_USERS)) # 每个用户的信道增益
+    E: list = field(default_factory=lambda: list(EARLY_EXIT_LAYERS))  # 早退层的集合
+    D: list = field(default_factory=lambda: list(DATA_SIZE_LAYERS))  # 各层的输出数据大小
+    C: list = field(default_factory=lambda: list(COMPUTE_SIZE_LAYERS))  # 各层的计算大小
+    F_u: np.ndarray = field(default_factory=lambda: np.array(USER_FREQs))  # 每个用户的处理频率
+    H_u: np.ndarray = field(default_factory=lambda: np.array(CHANNEL_GAINS_USERS))  # 每个用户的信道增益
     rates: np.ndarray = field(init=False, default=None)
     accs: np.ndarray = field(init=False, default=None)
 
