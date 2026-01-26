@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 
-from Src.Exp2_Dynamic.plot_decision_XY import plot_cut_points
+from Src.Exp2_Dynamic.plot_decision_XY import plot_X
 from Src.Exp2_Dynamic.plot_latency_stacked import plot_latency_stacked
 from Src.paras import Paras, RESULT_DYNAMIC_PATH
 from Src.Optimizer.PPO.run_PPO import run_dsci_experiment
@@ -48,7 +48,7 @@ def plot_user_dynamic(X, Y, F_e, F_c, paras):
         (T1, T2, T3, T4, T5),
         out_dir / "latency_stacked.png",
     )
-    plot_cut_points(
+    plot_X(
         user_labels,
         cut_points,
         out_dir / "cut_points.png",
