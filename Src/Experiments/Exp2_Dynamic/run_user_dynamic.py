@@ -1,5 +1,5 @@
 """
-Src/Exp2_Dynamic/run_dynamic.py
+Src/Exp2_Dynamic/run_user_dynamic.py
 """
 import json
 import numpy as np
@@ -7,28 +7,12 @@ from pathlib import Path
 from datetime import datetime
 from Src.Experiments.Exp2_Dynamic.plot_decision import plot_X
 from Src.Experiments.Exp2_Dynamic.plot_latency_stacked import plot_latency_stacked
+from Src.Utils.parsing_data import split_points_matrix
 from Src.paras import Paras, RESULT_DYNAMIC_PATH
 from Src.Optimizer.PPO.run_PPO import run_dsci_experiment
 from Src.Objective.compute_latency import compute_5_latency
 from Src.Objective.compute_P import compute_layer_exit_probs
 from Src.Objective.objective import objective
-
-def _parse_cut_points_from_X(X: np.ndarray) -> np.ndarray:
-    """
-    将 0-1 矩阵 X 解析为每个用户的切分点对 (cut0, cut1)。
-    默认约定：每行出现的前两个 1 的位置分别是 cut0/cut1。
-    若只有 1 个 1，则 cut1=-1；若没有 1，则 (-1,-1)。
-    """
-    X = np.asarray(X)
-    n, _ = X.shape
-    cuts = np.full((n, 2), -1, dtype=int)
-    for i in range(n):
-        idx = np.where(X[i] == 1)[0]
-        if idx.size >= 2:
-            cuts[i] = [int(idx[0]), int(idx[1])]
-        elif idx.size == 1:
-            cuts[i] = [int(idx[0]), -1]
-    return cuts
 
 
 def plot_user_dynamic(X, Y, F_e, F_c, paras):
@@ -36,7 +20,7 @@ def plot_user_dynamic(X, Y, F_e, F_c, paras):
     best_val = objective(X, Y, F_e, F_c, paras)
     P = compute_layer_exit_probs(Y, paras)
     T1, T2, T3, T4, T5 = compute_5_latency(X, P, F_e, F_c, paras)
-    cut_points = _parse_cut_points_from_X(X)
+    cut_points = split_points_matrix(X)
 
     # ========= 2) 画图 ========
     user_labels = [str(i + 1) for i in range(paras.n)]
@@ -94,10 +78,10 @@ def dynamic_without_data(n, F_u, H_u):
 
 if __name__ == "__main__":
     # 没有解的时候：
-    # n = 10
-    # F_u = np.array([0.1] * 3 + [2.0] * 4 + [8.0] * 3, dtype=np.float32)
-    # H_u = np.array([2.0] * 10, dtype=np.float32)
-    # dynamic_without_data(n, F_u, H_u)
+    n = 30
+    F_u = np.array([0.1] * 10 + [2.0] * 10 + [8.0] * 10, dtype=np.float32)
+    H_u = np.array([2.0] * 30, dtype=np.float32)
+    dynamic_without_data(n, F_u, H_u)
 
     # 有解的时候：
-    dynamic_with_data(Path("D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260126_104604"))
+    # dynamic_with_data(Path("D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260126_104604"))
