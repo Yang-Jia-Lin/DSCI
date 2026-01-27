@@ -96,8 +96,8 @@ if __name__ == "__main__":
 
     # 4. 绘图
     df = pd.DataFrame(results)
-    df['latency_ms'] = (df['latency'] / paras.beta) * 1000
-    df['accuracy'] = (df['accuracy'] / paras.alpha) * 100
+    df['latency_ms'] = (df['latency'] / paras.beta)
+    df['accuracy'] = (df['accuracy'] / paras.alpha)
     print("\n正在生成图表...")
     plot_bubble_chart(df)
     plot_utility_bar(df)
