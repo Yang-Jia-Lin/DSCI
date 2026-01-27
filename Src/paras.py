@@ -1,32 +1,42 @@
 """
 Src/paras.py
 """
+import platform
 from dataclasses import dataclass, field
 from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Train Data Path
-DATA_ROOT = "D:/Coding/Python/DSCI/Data/CIFAR10"
-WEIGHTS_DIR = "D:/Coding/Python/DSCI/Data/Model_Checkpoints"
+if platform.system() == "Windows":
+    BASE_DRIVE = Path("D:/Coding/Python/DSCI")
+else:
+    BASE_DRIVE = Path("/workspace/user/Coding/jialin/DSCI")
 
-# Simulate Path
+# 2. 基于根目录定义子路径 (pathlib 会自动处理 / 和 \)
+DATA_DIR = BASE_DRIVE / "Data"
+RESULT_DIR = BASE_DRIVE / "Result"
+
+# --- Train Data Path ---
+DATA_ROOT = DATA_DIR / "CIFAR10"
+WEIGHTS_DIR = DATA_DIR / "Model_Checkpoints"
+
+# --- Simulate Path ---
 MODEL_NAME = "Resnet50"
-RATE_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_rates.csv"
-ACC_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_accs.csv"
-LAYER_CSV_PATH = f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_layer_stats.csv"
+RATE_CSV_PATH = DATA_DIR / f"{MODEL_NAME}_rates.csv"
+ACC_CSV_PATH = DATA_DIR / f"{MODEL_NAME}_accs.csv"
+LAYER_CSV_PATH = DATA_DIR / f"{MODEL_NAME}_layer_stats.csv"
 
-# Result Path
-RESULT_BASELINE_PATH = "D:/Coding/Python/DSCI/Result/Exp1_Baseline"
-RESULT_DYNAMIC_PATH = "D:/Coding/Python/DSCI/Result/Exp2_Dynamic"
-RESULT_CONVERGENCE_PATH = "D:/Coding/Python/DSCI/Result/Exp3_Convergence"
-RESULT_EE_MODEL_PATH = 'D:/Coding/Python/DSCI/Result/Exp4_EE_Model'
+# --- Result Path ---
+RESULT_BASELINE_PATH = RESULT_DIR / "Exp1_Baseline"
+RESULT_DYNAMIC_PATH = RESULT_DIR / "Exp2_Dynamic"
+RESULT_CONVERGENCE_PATH = RESULT_DIR / "Exp3_Convergence"
+RESULT_EE_MODEL_PATH = RESULT_DIR / 'Exp4_EE_Model'
 
-# Optimize Path
-RESULT_GA_PATH = "D:/Coding/Python/DSCI/Result/Optimize/GA"
-RESULT_PPO_PATH = "D:/Coding/Python/DSCI/Result/Optimize/PPO"
-RESULT_BF_PATH = "D:/Coding/Python/DSCI/Result/Optimize/BF"
-RESULT_TEST_PATH = "D:/Coding/Python/DSCI/Result/Test"
+# --- Optimize Path ---
+RESULT_GA_PATH = RESULT_DIR / "Optimize/GA"
+RESULT_PPO_PATH = RESULT_DIR / "Optimize/PPO"
+RESULT_BF_PATH = RESULT_DIR / "Optimize/BF"
+RESULT_TEST_PATH = RESULT_DIR / "Test"
 
 # User
 NUM_USERS = 10
@@ -35,7 +45,7 @@ NUM_USERS = 10
 NUM_LAYERS = 128
 EARLY_EXIT_LAYERS = [57, 103]  # 1 9 12 18 9 1
 NUM_EXIT_LAYERS = len(EARLY_EXIT_LAYERS)
-csv_path = Path(f"D:/Coding/Python/DSCI/Data/{MODEL_NAME}_layer_stats.csv")
+csv_path = DATA_DIR / f"{MODEL_NAME}_layer_stats.csv"
 df = pd.read_csv(csv_path)
 DATA_SIZE_LAYERS = df["num_bytes"].astype(int).tolist()
 COMPUTE_SIZE_LAYERS = df["approx_flops"].astype(int).tolist()

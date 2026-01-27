@@ -1,11 +1,13 @@
-Data/
+Data/CIFAR10/
+Data/Model_Checkpoints
 *.pth
 *.pt
 *.h5
 *.ckpt
 *.safetensors
 *.onnx
-
+*.tar.gz
+*.zip
 # 忽略 Python 缓存和环境
 __pycache__/
 *.pyc

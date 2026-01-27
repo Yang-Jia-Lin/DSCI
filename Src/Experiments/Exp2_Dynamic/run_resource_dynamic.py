@@ -38,8 +38,9 @@ def resource_dynamic(resume_path: Path = None):
             print(f"Warning: Could not read existing CSV, starting fresh. Error: {e}")
 
     # 3. 实验配置
-    f_u_range = np.arange(0.5, 8.5, 0.5)
     num_users = 20
+    f_u_range = np.arange(0.5, 8.5, 0.5)
+    h_u_val = np.array([2.0] * num_users, dtype=np.float32)
     print("-" * 50)
 
     # 4. 遍历资源
@@ -50,15 +51,16 @@ def resource_dynamic(resume_path: Path = None):
             continue
         print(f"[{i + 1}/{len(f_u_range)}] Running for User Frequency: {f_val} GHz...")
 
-        custom_paras = {"n": num_users, "F_u": [f_val] * num_users}
+        custom_paras = {"n": num_users, "F_u": [f_val] * num_users, "H_u": h_u_val}
         try:
             # --- PPO优化 ---
             best_val, best_sol, history, paras = run_dsci_experiment(
-                custom_paras_dict=custom_paras, save_log=False
+                custom_paras_dict=custom_paras, save_log=True
             )
 
             # --- 解析决策 X ---
-            cut_points = split_points_matrix(np.array(best_sol))
+            X, Y, F_e, F_c = best_sol
+            cut_points = split_points_matrix(np.array(X))
             clean_cuts = cut_points.astype(float)
             clean_cuts[clean_cuts[:, 0] == -1, 0] = paras.m
             avg_end_edge = np.mean(clean_cuts[:, 0])
@@ -97,7 +99,7 @@ def resource_dynamic(resume_path: Path = None):
 
 
 if __name__ == "__main__":
-    # 如果从某个文件夹继续
+    # 从某文件夹继续
     # resource_dynamic(resume_path=Path("D:\Coding\Python\DSCI\Result\Exp2_Dynamic\Resource_Hetero_0520_1400"))
-    # 重新运行
+    # 从头运行
     csv_file, plot_dir = resource_dynamic()

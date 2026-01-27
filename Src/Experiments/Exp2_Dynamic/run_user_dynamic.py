@@ -78,9 +78,9 @@ def dynamic_without_data(n, F_u, H_u):
 
 if __name__ == "__main__":
     # 没有解的时候：
-    n = 30
-    F_u = np.array([0.1] * 10 + [2.0] * 10 + [8.0] * 10, dtype=np.float32)
-    H_u = np.array([2.0] * 30, dtype=np.float32)
+    n = 18
+    F_u = np.array([0.1] * 6 + [1.0] * 6 + [8.0] * 6, dtype=np.float32)
+    H_u = np.array([2.0] * 18, dtype=np.float32)
     dynamic_without_data(n, F_u, H_u)
 
     # 有解的时候：

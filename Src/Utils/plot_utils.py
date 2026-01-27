@@ -12,6 +12,8 @@ def set_ieee_style(mode='single'):
     """
     # 1. 选择基础风格
     plt.style.use('seaborn-v0_8-whitegrid')
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Times New Roman', 'Liberation Serif', 'DejaVu Serif', 'serif']
 
     # 2. 计算画布尺寸 (单位为英寸)
     # IEEE 单栏建议宽度为 3.5 英寸，高度可根据内容调整（推荐 2.8 - 3.2）

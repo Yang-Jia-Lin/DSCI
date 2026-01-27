@@ -38,7 +38,7 @@ def run_convergence_analysis(exp_path: Path, save_root: Path = RESULT_CONVERGENC
     # ======== 总效用收敛曲线 (outer_obj) ========
     plt.figure()
     if 'outer_obj' in df.columns:
-        plt.plot(df['outer_obj'], label='Total Utility')
+        plt.plot(df['outer_obj'], label='Total Utility', linewidth=1)
 
     plt.xlabel('Epoch')
     plt.ylabel('Utility')
@@ -52,9 +52,9 @@ def run_convergence_analysis(exp_path: Path, save_root: Path = RESULT_CONVERGENC
     # ======== 熵收敛曲线 (Entropy X & Y) ========
     plt.figure()
     if 'entropy_X' in df.columns:
-        plt.plot(df['entropy_X'], label='Entropy $\mathbf{X}$')
+        plt.plot(df['entropy_X'], label='Entropy $\mathbf{X}$', linewidth=1)
     if 'entropy_Y' in df.columns:
-        plt.plot(df['entropy_Y'], label='Entropy $\mathbf{Y}$', linestyle='--')
+        plt.plot(df['entropy_Y'], label='Entropy $\mathbf{Y}$', linestyle='--', linewidth=1)
 
     plt.xlabel('Epoch')
     plt.ylabel('Entropy')
@@ -69,11 +69,11 @@ def run_convergence_analysis(exp_path: Path, save_root: Path = RESULT_CONVERGENC
     fig, ax1 = plt.subplots()
     ax2 = ax1.twinx()
 
-    l1, = ax1.plot(df['latency'], '--', color = color_lat,label="Latency")
+    l1, = ax1.plot(df['latency'], '--', color = color_lat, label="Latency", linewidth=1)
     ax1.set_ylabel('Latency (s)')
     ax1.tick_params(axis='y')
 
-    l2, = ax2.plot(df['acc'], '-', color = color_acc,label="Accuracy")
+    l2, = ax2.plot(df['acc'], '-', color = color_acc, label="Accuracy", linewidth=1)
     ax2.set_ylabel('Accuracy')
     ax2.tick_params(axis='y')
 

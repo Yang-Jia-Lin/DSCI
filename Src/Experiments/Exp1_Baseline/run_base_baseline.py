@@ -32,7 +32,7 @@ m = paras.m
 
 
 # ==== 仅在终端 ====
-# X为全零矩阵，Y为全1矩阵
+# X为全零矩阵，Y为全 1 矩阵
 X = np.zeros((n, m))
 Y = np.ones((n, m))
 Y[:,m-1] = 0
@@ -48,7 +48,7 @@ obj = objective(X, Y, F_e, F_c, paras)
 print(f"obj:{obj}\n")
 
 # ==== 仅在边端 ====
-# X除了1列外为全零矩阵，Y为全1矩阵
+# X除了1列外为全零矩阵，Y为全 1 矩阵
 X_0 = np.zeros((n, m))
 X_0[:,0] = 1
 Y_0 = np.ones((n, m))
@@ -65,7 +65,7 @@ print(f"acc:{paras.alpha * sum(acc_vec_0)}")
 print(f"obj:{obj_0}\n")
 
 # ==== 仅在云端 ====
-# X除了12列外为全零矩阵，Y为全1矩阵
+# X除了12列外为全零矩阵，Y为全 1 矩阵
 X_1 = np.zeros((n, m))
 X_1[:,0] = 1
 X_1[:,1] = 1
