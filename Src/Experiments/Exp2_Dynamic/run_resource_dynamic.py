@@ -39,7 +39,7 @@ def resource_dynamic(resume_path: Path = None):
 
     # 3. 实验配置
     num_users = 20
-    f_u_range = np.arange(0.5, 8.5, 0.5)
+    f_u_range = np.arange(0.5, 8.5, 1)
     h_u_val = np.array([2.0] * num_users, dtype=np.float32)
     print("-" * 50)
 
