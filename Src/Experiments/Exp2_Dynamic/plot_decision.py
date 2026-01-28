@@ -60,8 +60,8 @@ def plot_XY(X_opt, Y_opt, data_name: str, save_dir: Path):
     # ---- 保存结果 ----
     if save_dir is not None:
         save_dir.mkdir(parents=True, exist_ok=True)
-        save_fig_for_ieee(save_dir / f"{stem}_X")
-        save_fig_for_ieee(save_dir / f"{stem}_Y")
+        save_fig_for_ieee(save_dir / f"{stem}_X", fig=figX)
+        save_fig_for_ieee(save_dir / f"{stem}_Y", fig=figY)
         print(f"决策热力图已保存至: {save_dir}")
     plt.show()
 
@@ -215,9 +215,9 @@ def test_XY():
     # F_e = np.ones((paras.n, 1), dtype=np.float32) * (paras.f_e_max / paras.n)
     # F_c = np.ones((paras.n, 1), dtype=np.float32) * (paras.f_c_max / paras.n)
     # test 1
-    plot_XY(X, Y, data_name="Test_plot_XY.svg", save_dir=Path(RESULT_TEST_PATH))
+    plot_XY(X, Y, data_name="Test_plot_XY", save_dir=Path(RESULT_TEST_PATH))
 
 
 if __name__ == "__main__":
-    # test_XY()
-    test_resource_trend()
+    test_XY()
+    # test_resource_trend()

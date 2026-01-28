@@ -61,18 +61,19 @@ def set_ieee_style(mode='single'):
     print(f"IEEE Style ({mode}) initialized.")
 
 
-def save_fig_for_ieee(save_path):
+def save_fig_for_ieee(save_path, fig=None): # fig 默认为 None
     """
-    保存为 IEEE 要求的格式，并移除所有不必要的内边距
+    如果传了 fig，就存 fig；没传，就存当前活跃的图 (plt)
     """
-    # bbox_inches='tight'：自动裁剪掉周围多余的空白
-    # pad_inches=0：将裁剪后的额外留白设为 0
-    plt.savefig(save_path.with_suffix('.pdf'),
+    # 确定要操作的对象
+    target = fig if fig is not None else plt
+
+    target.savefig(save_path.with_suffix('.pdf'),
                 format='pdf',
                 bbox_inches='tight',
                 pad_inches=0)
 
-    plt.savefig(save_path.with_suffix('.png'),
+    target.savefig(save_path.with_suffix('.png'),
                 format='png',
                 bbox_inches='tight',
                 pad_inches=0,
