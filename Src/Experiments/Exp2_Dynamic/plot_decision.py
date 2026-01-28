@@ -106,7 +106,7 @@ def plot_resource_trend(csv_path: Path, save_dir: Path, total_layers: int = 128)
         print(f"[Error] CSV file not found at {csv_path}")
         return
     df = pd.read_csv(csv_path)
-    f_u = df["F_u"].values
+    h_u = df["H_u"].values
     cut_ee = df["avg_end_edge"].values  # End-Edge 边界
     cut_ec = df["avg_edge_cloud"].values  # Edge-Cloud 边界
     utility = df["total_utility"].values
@@ -118,39 +118,39 @@ def plot_resource_trend(csv_path: Path, save_dir: Path, total_layers: int = 128)
 
     # 3. 绘制区域填充 (三色空间划分)
     # 区间1: Local Processing (0 到 End-Edge)
-    ax1.fill_between(f_u, 0, cut_ee, color='#DAE8FC', alpha=0.8, label='Local')
+    ax1.fill_between(h_u, 0, cut_ee, color='#DAE8FC', alpha=0.8, label='Local')
     # 区间2: Edge Processing (End-Edge 到 Edge-Cloud)
-    ax1.fill_between(f_u, cut_ee, cut_ec, color='#D5E8D4', alpha=0.8, label='Edge')
+    ax1.fill_between(h_u, cut_ee, cut_ec, color='#D5E8D4', alpha=0.8, label='Edge')
     # 区间3: Cloud Processing (Edge-Cloud 到 Total Layers)
-    ax1.fill_between(f_u, cut_ec, total_layers, color='#FFE6CC', alpha=0.8, label='Cloud')
+    ax1.fill_between(h_u, cut_ec, total_layers, color='#FFE6CC', alpha=0.8, label='Cloud')
 
     # 4. 绘制边界线
-    ax1.plot(f_u, cut_ee, color='#6C8EBF', linestyle='-', marker='o', markersize=4, linewidth=1.5)
-    ax1.plot(f_u, cut_ec, color='#82B366', linestyle='-', marker='s', markersize=4, linewidth=1.5)
+    ax1.plot(h_u, cut_ee, color='#6C8EBF', linestyle='-', marker='o', markersize=4, linewidth=1.5)
+    ax1.plot(h_u, cut_ec, color='#82B366', linestyle='-', marker='s', markersize=4, linewidth=1.5)
 
     # 5. 设置主轴 (层数)
-    ax1.set_xlabel('User Device Frequency $F_u$ (GHz)')
+    ax1.set_xlabel('User Device Bandwidth $H_u$ (MHz)')
     ax1.set_ylabel('DNN Layer Index')
     ax1.set_ylim(0, total_layers)
-    ax1.set_xlim(f_u.min(), f_u.max())
+    ax1.set_xlim(h_u.min(), h_u.max())
 
-    # 6. 绘制次轴 (总效用) - 可选，展示效用随算力的增长
+    # 6. 绘制次轴 (总效用)
     ax2 = ax1.twinx()
-    ax2.plot(f_u, utility, color='#B85450', linestyle='--', linewidth=1.2, label='Total Utility')
+    ax2.plot(h_u, utility, color='#B85450', linestyle='--', linewidth=1.2, label='Total Utility')
     ax2.set_ylabel('Total System Utility')
 
     # 合并图例
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='lower center',  bbox_to_anchor=(0.5, 1.01), fontsize='small', frameon=True, ncol=2)
-    # ax1.set_title("Decision Sensitivity vs. User Capacity")
+    # ax1.set_title("Decision Sensitivity vs. User Bandwidth")
     ax1.grid(axis='y', linestyle=':', alpha=0.6)
 
     # 7. 保存
     if save_dir:
         save_dir.mkdir(parents=True, exist_ok=True)
-        save_fig_for_ieee(save_dir / "resource_trend_analysis")
-        print(f"[Success] Trend plot saved to: {save_dir / 'resource_trend_analysis.pdf'}")
+        save_fig_for_ieee(save_dir / "resource_trend_analysis(h_u)")
+        print(f"[Success] Trend plot saved to: {save_dir / 'resource_trend_analysis(h_u).pdf'}")
 
     plt.show()
 

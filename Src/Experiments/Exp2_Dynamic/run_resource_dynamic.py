@@ -39,19 +39,19 @@ def resource_dynamic(resume_path: Path = None):
 
     # 3. 实验配置
     num_users = 20
-    f_u_range = np.arange(0.5, 8.5, 1)
-    h_u_val = np.array([2.0] * num_users, dtype=np.float32)
+    h_u_range = np.arange(0.5, 8.5, 1)
+    f_u_val = np.array([2.0] * num_users, dtype=np.float32)
     print("-" * 50)
 
     # 4. 遍历资源
-    for i, f_val in enumerate(f_u_range):
+    for i, h_val in enumerate(h_u_range):
         # --- 断点检测 ---
-        if any(np.isclose(f_val, c_val) for c_val in completed_f_vals):
-            print(f"[{i + 1}/{len(f_u_range)}] Skipping F_u = {f_val} GHz (Already exists).")
+        if any(np.isclose(h_val, c_val) for c_val in completed_f_vals):
+            print(f"[{i + 1}/{len(h_u_range)}] Skipping H_u = {h_val} MHz (Already exists).")
             continue
-        print(f"[{i + 1}/{len(f_u_range)}] Running for User Frequency: {f_val} GHz...")
+        print(f"[{i + 1}/{len(h_u_range)}] Running for User Channel Gains: {h_val} MHz...")
 
-        custom_paras = {"n": num_users, "F_u": [f_val] * num_users, "H_u": h_u_val}
+        custom_paras = {"n": num_users, "F_u": f_u_val, "H_u": [h_val] * num_users}
         try:
             # --- PPO优化 ---
             best_val, best_sol, history, paras = run_dsci_experiment(
@@ -68,7 +68,7 @@ def resource_dynamic(resume_path: Path = None):
 
             # --- 构造当前行数据 --
             new_row = {
-                "F_u": f_val,
+                "H_u": h_val,
                 "avg_end_edge": avg_end_edge,
                 "avg_edge_cloud": avg_edge_cloud,
                 "total_utility": best_val
@@ -84,7 +84,7 @@ def resource_dynamic(resume_path: Path = None):
             print("\nExperiment interrupted by user. Progress is saved.")
             return csv_path, exp_dir
         except Exception as e:
-            print(f"   Error at F_u = {f_val}: {e}. Skipping to next...")
+            print(f"   Error at F_u = {h_val}: {e}. Skipping to next...")
             continue
 
     print("-" * 50 + f"\n[All Finished] Results in: {exp_dir}")
