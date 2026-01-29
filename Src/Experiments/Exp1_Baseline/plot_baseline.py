@@ -48,7 +48,7 @@ def plot_bubble_chart(data: pd.DataFrame, save_dir=Path(RESULT_BASELINE_PATH)):
     plt.tight_layout(pad=0.15)
 
     save_dir.mkdir(parents=True, exist_ok=True)
-    save_fig_for_ieee(save_dir / f"baseline_bubble_chart_{datetime.now().strftime('%H%M')}")
+    save_fig_for_ieee(save_dir / f"baseline_bubble_chart_{datetime.now().strftime('%m%d_%H%M')}")
     plt.show()
 
 
