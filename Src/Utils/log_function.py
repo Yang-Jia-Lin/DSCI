@@ -74,8 +74,8 @@ def save_experiment_results(
 
     # ======== 4) 绘制并保存曲线 ========
     plot_convergence(history, alg_name=f"{algo_name}_Convergence", output_dir=exp_dir)
-    plot_X(X_opt, paras.E, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
-    plot_Y(Y_opt, paras.E, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
+    plot_X(X_opt, paras.E, save_dir=exp_dir)
+    plot_Y(Y_opt, paras.E, save_dir=exp_dir)
 
 
 def load_and_analyze_results(exp_dir: Path, analysis = True):
@@ -148,8 +148,8 @@ def load_and_analyze_results(exp_dir: Path, analysis = True):
             open_file(decs_svgs[0])
         else:
             print("未发现决策图，正在重新绘制...")
-            plot_X(X_opt, paras.E, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
-            plot_Y(Y_opt, paras.E, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
+            plot_X(X_opt, paras.E, save_dir=exp_dir)
+            plot_Y(Y_opt, paras.E, save_dir=exp_dir)
 
     # ======== 5) 返回结果
     return X_opt, Y_opt, F_e, F_c, history, paras

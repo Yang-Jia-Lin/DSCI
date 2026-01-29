@@ -78,3 +78,16 @@ def plot_utility_bar(data: pd.DataFrame, save_dir = Path(RESULT_BASELINE_PATH)):
     save_dir.mkdir(parents=True, exist_ok=True)
     save_fig_for_ieee(save_dir / f"baseline_bar_chart_{datetime.now().strftime('%m%d_%H%M')}")
     plt.show()
+
+
+if __name__ == "__main__":
+    mock_data = pd.DataFrame({
+        'name': ["仅在终端", "仅在边端", "仅在云端", "仅协同", "边端 + 早退", "协同 + 早退"],
+        'latency_ms': [30, 80, 250, 150, 60, 110],
+        'accuracy': [75.5, 88.2, 98.5, 92.0, 85.0, 96.5],
+        'objective': [0.45, 0.62, 0.35, 0.78, 0.72, 0.95]
+    })
+
+    from Src.paras import RESULT_TEST_PATH
+    plot_bubble_chart(mock_data, save_dir = Path(RESULT_TEST_PATH))
+    plot_utility_bar(mock_data, save_dir = Path(RESULT_TEST_PATH))

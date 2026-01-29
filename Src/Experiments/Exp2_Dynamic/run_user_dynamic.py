@@ -31,9 +31,9 @@ def plot_user_dynamic(X, Y, F_e, F_c, paras):
     # 堆叠时延图
     plot_latency_stacked(user_labels,(T1, T2, T3, T4, T5), out_dir / "latency_stacked",)
     # X 决策热力图
-    plot_X(X, paras.E, "Decisions", save_dir=out_dir)
+    plot_X(X, paras.E, save_dir=out_dir)
     # Y 决策热力图
-    plot_Y(Y, paras.E, "Decisions", save_dir=out_dir)
+    plot_Y(Y, paras.E, save_dir=out_dir)
 
 
 def dynamic_with_data(solution_dir: Path):

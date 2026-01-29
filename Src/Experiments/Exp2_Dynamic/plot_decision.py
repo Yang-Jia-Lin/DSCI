@@ -3,16 +3,17 @@ Src/Exp2_Dynamic/plot_decision.py
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 from pathlib import Path
-from Src.paras import Paras, RESULT_TEST_PATH
+
+from Src.paras import Paras
 from Src.Utils.plot_utils import set_ieee_style, save_fig_for_ieee
 
 
-def plot_X(X_opt, EE_layers, data_name: str, save_dir: Path):
+def plot_X(X_opt, EE_layers, save_dir: Path):
     """
     绘制决策变量 X (模型划分) 的热力图
     """
-    stem = Path(data_name).stem
     n, m = X_opt.shape
 
     set_ieee_style(mode='single')
@@ -33,15 +34,14 @@ def plot_X(X_opt, EE_layers, data_name: str, save_dir: Path):
 
     # 保存
     save_dir.mkdir(parents=True, exist_ok=True)
-    save_fig_for_ieee(save_dir / f"{stem}_X")
+    save_fig_for_ieee(save_dir / f"Decision_X_{datetime.now().strftime('%m%d_%H%M')}")
     plt.show()
 
 
-def plot_Y(Y_opt, EE_layers: list, data_name: str, save_dir: Path):
+def plot_Y(Y_opt, EE_layers, save_dir: Path):
     """
     绘制决策变量 Y (早退阈值) 的热力图
     """
-    stem = Path(data_name).stem
     n = Y_opt.shape[0]
     Y_E = Y_opt[:, EE_layers]
 
@@ -62,7 +62,7 @@ def plot_Y(Y_opt, EE_layers: list, data_name: str, save_dir: Path):
     plt.tight_layout(pad=0.15)
 
     save_dir.mkdir(parents=True, exist_ok=True)
-    save_fig_for_ieee(save_dir / f"{stem}_Y")
+    save_fig_for_ieee(save_dir / f"Decision_Y_{datetime.now().strftime('%m%d_%H%M')}")
     plt.show()
 
 
@@ -79,6 +79,6 @@ if __name__ == "__main__":
     Y[7, 57] = 0.1
     Y[9, 103] = 0.5
 
-    save_path = Path(RESULT_TEST_PATH)
-    plot_X(X, paras.E, data_name="Test_Plot_X", save_dir=save_path)
-    plot_Y(Y, paras.E, data_name="Test_Plot_Y", save_dir=save_path)
+    from Src.paras import RESULT_TEST_PATH
+    plot_X(X, paras.E, save_dir = Path(RESULT_TEST_PATH))
+    plot_Y(Y, paras.E, save_dir = Path(RESULT_TEST_PATH))

@@ -97,7 +97,5 @@ if __name__ == "__main__":
     df = pd.DataFrame(results)
     df['latency_ms'] = (df['latency'] / paras.beta)
     df['accuracy'] = (df['accuracy'] / paras.alpha)
-    print("\n正在生成图表...")
     plot_bubble_chart(df)
     plot_utility_bar(df)
-    print("所有 Baseline 评估与绘图任务已完成。")

@@ -4,8 +4,9 @@ Src/Exp3_DSCI_Convergency/plot_convergency.py
 import matplotlib.pyplot as plt
 from pathlib import Path
 from datetime import datetime
+
 from Src.Utils.plot_utils import save_fig_for_ieee, set_ieee_style
-from Src.paras import RESULT_CONVERGENCE_PATH, RESULT_TEST_PATH
+from Src.paras import RESULT_CONVERGENCE_PATH
 
 
 def plot_convergence(
@@ -43,7 +44,7 @@ def plot_entropy(entropy_X, entropy_Y, save_dir = Path(RESULT_CONVERGENCE_PATH))
     plt.tight_layout(pad=0.15)
 
     save_dir.mkdir(parents=True, exist_ok=True)
-    save_fig_for_ieee(save_dir / "entropy_convergence")
+    save_fig_for_ieee(save_dir / f"entropy_convergence_{datetime.now().strftime('%m%d_%H%M')}")
     plt.show()
 
 
@@ -71,7 +72,7 @@ def plot_lan_and_acc(latency, acc, save_dir=Path(RESULT_CONVERGENCE_PATH)):
     plt.tight_layout(pad=0.15)
 
     save_dir.mkdir(parents=True, exist_ok=True)
-    save_fig_for_ieee(save_dir / "perf_tradeoff")
+    save_fig_for_ieee(save_dir / f"perf_tradeoff_{datetime.now().strftime('%m%d_%H%M')}")
     plt.show()
 
 
@@ -79,5 +80,6 @@ if __name__ == '__main__':
     from Src.Utils.log_function import load_and_analyze_results
     PPO_path = Path("D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260127_153244")
     X_opt, Y_opt, F_e, F_c, history, paras = load_and_analyze_results(exp_dir = PPO_path, analysis = False)
-    save_dir = Path(RESULT_TEST_PATH)
-    plot_convergence(history, save_dir)
+
+    from Src.paras import RESULT_TEST_PATH
+    plot_convergence(history, save_dir = Path(RESULT_TEST_PATH))

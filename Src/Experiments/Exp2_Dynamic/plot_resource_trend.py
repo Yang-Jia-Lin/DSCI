@@ -2,10 +2,12 @@
 Src/Exp2_Dynamic/plot_decision.py
 """
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
-import pandas as pd
-from Src.paras import RESULT_TEST_PATH, NUM_LAYERS
+from datetime import datetime
+
+from Src.paras import NUM_LAYERS
 from Src.Utils.plot_utils import set_ieee_style, save_fig_for_ieee
 
 
@@ -59,29 +61,24 @@ def plot_resource_trend(csv_path: Path, save_dir: Path):
 
     # 保存
     save_dir.mkdir(parents=True, exist_ok=True)
-    save_fig_for_ieee(save_dir / f"resource_trend_analysis({x_col_name})")
+    save_fig_for_ieee(save_dir / f"resource_trend_analysis({x_col_name})_{datetime.now().strftime('%m%d_%H%M')}")
     plt.show()
 
 
 if __name__ == "__main__":
-    # 1. 定义路径
+    # 路径
+    from Src.paras import RESULT_TEST_PATH
     test_dir = Path(RESULT_TEST_PATH) / "Test_Resource_Trend"
     test_csv = test_dir / "test_dynamic_data.csv"
 
-    # 2. 生成模拟数据
+    # 模拟数据
     f_u_range = np.arange(0.5, 8.5, 0.5)
     n_steps = len(f_u_range)
-
-    # 3. 构造模拟趋势：
-    # 3.1 End-Edge: 随算力增加从第 10 层线性增加到第 80 层左右
     avg_end_edge = 10 + 8 * f_u_range + np.random.normal(0, 2, n_steps)
-    # 3.2 Edge-Cloud: 相对稳定，在大约 100 层左右波动
     avg_edge_cloud = 90 + 3 * f_u_range + np.random.normal(0, 2, n_steps)
-    # 3.3 Utility: 收益递减的增长曲线
     total_utility = 500 + 200 * np.log1p(f_u_range)
     avg_end_edge = np.clip(avg_end_edge, 0, 120)
     avg_edge_cloud = np.clip(avg_edge_cloud, avg_end_edge + 5, 127)
-    # 3.4 保存csv用于测试
     df = pd.DataFrame({
         "F_u": f_u_range,
         "avg_end_edge": avg_end_edge,
@@ -92,10 +89,5 @@ if __name__ == "__main__":
     df.to_csv(test_csv, index=False)
     print(f"[Test] Mock CSV generated at: {test_csv}")
 
-    # 4. 执行绘图
-    print("[Test] Starting plot_resource_trend...")
-    plot_resource_trend(
-        csv_path=test_csv,
-        save_dir=test_dir
-    )
-    print(f"[Test] Plotting complete. Check results in: {test_dir}")
+    # 测试
+    plot_resource_trend(csv_path=test_csv, save_dir=test_dir)
