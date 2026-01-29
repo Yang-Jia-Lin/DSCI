@@ -7,12 +7,12 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 from Src.Experiments.Exp1_Baseline.plot_baseline import plot_bubble_chart, plot_utility_bar
-from Src.paras import Paras
 from Src.Objective.objective import objective
 from Src.Objective.compute_P import compute_layer_exit_probs
 from Src.Objective.compute_latency import compute_total_latency
 from Src.Objective.compute_accuracy import compute_expected_accuracy
 from Src.Utils.log_function import load_and_analyze_results
+from Src.paras import RESULT_BASELINE_PATH
 
 
 def evaluate_strategy(X, Y, F_e, F_c, paras, name: str = "Strategy") -> Dict[str, float]:
@@ -68,12 +68,8 @@ def get_baseline_decisions(mode: str, paras, X_opt, Y_opt, F_e_opt, F_c_opt) -> 
         raise ValueError(f"Unknown mode: {mode}")
 
 
-if __name__ == "__main__":
-    # 1. 加载数据
-    PPO_path = Path(r"D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260127_153244")
+def run_base_baseline(PPO_path: Path, save_dir: Path):
     X_opt, Y_opt, F_e_opt, F_c_opt, _, paras = load_and_analyze_results(exp_dir=PPO_path, analysis=False)
-
-    # 2. 定义 Baseline 列表
     baseline_modes = [
         ("仅在终端", "Device"),
         ("仅在边端", "Edge"),
@@ -82,8 +78,6 @@ if __name__ == "__main__":
         ("边端 + 早退", "Edge+EE"),
         ("协同 + 早退", "Collaborative+EE")
     ]
-
-    # 3. 循环计算并打印结果
     results = []
     print(f"{'策略名称':<15} | {'Latency':<10} | {'Accuracy':<10} | {'Objective':<10}")
     print("-" * 60)
@@ -93,9 +87,15 @@ if __name__ == "__main__":
         results.append(res)
         print(f"{res['name']:<15} | {res['latency']:<10.4f} | {res['accuracy']:<10.4f} | {res['objective']:<10.4f}")
 
-    # 4. 绘图
+    # 绘图
     df = pd.DataFrame(results)
     df['latency_ms'] = (df['latency'] / paras.beta)
     df['accuracy'] = (df['accuracy'] / paras.alpha)
-    plot_bubble_chart(df)
-    plot_utility_bar(df)
+    plot_bubble_chart(df, save_dir)
+    plot_utility_bar(df, save_dir)
+
+
+if __name__ == "__main__":
+    data_dir = Path(r"D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260128_005931")
+    save_dir = Path(RESULT_BASELINE_PATH)
+    run_base_baseline(data_dir, save_dir)

@@ -22,9 +22,6 @@ class NumpyEncoder(json.JSONEncoder):
         elif isinstance(obj, np.floating):
             return float(obj)
         elif isinstance(obj, np.ndarray):
-            # 如果数组太长，只保存形状信息，保持 log 简洁
-            if obj.size > 20:
-                return f"<numpy_array shape={obj.shape} dtype={obj.dtype}>"
             return obj.tolist()
         return super(NumpyEncoder, self).default(obj)
 

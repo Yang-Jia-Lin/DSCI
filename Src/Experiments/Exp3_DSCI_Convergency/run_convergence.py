@@ -35,6 +35,6 @@ def run_convergence_analysis(data_dir: Path, output_dir: Path = Path(RESULT_CONV
 
 
 if __name__ == "__main__":
-    data_path = Path(r"D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260126_104604")
+    data_path = Path(r"D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260128_232731")
     result_path = Path(RESULT_CONVERGENCE_PATH)
     run_convergence_analysis(data_path, result_path)
