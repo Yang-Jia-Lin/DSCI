@@ -1,6 +1,6 @@
 """
 ActorCritic 网络
-Src/Optimizer/PPO/networks.py
+Src/Optimizer/DSCI/networks.py
 """
 import torch
 import torch.nn as nn

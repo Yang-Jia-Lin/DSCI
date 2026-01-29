@@ -187,5 +187,5 @@ def save_thr_data(
 
 
 if __name__ == "__main__":
-    target_path = Path("D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260129_025840")
+    target_path = Path("D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260127_115650")
     load_and_analyze_results(target_path)

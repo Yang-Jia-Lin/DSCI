@@ -45,7 +45,7 @@ def plot_bubble_chart(data: pd.DataFrame, save_dir=Path(RESULT_BASELINE_PATH)):
     ax.set_ylabel('Accuracy (%)')
     ax.margins(x=0.1, y=0.25)
     ax.grid(True, linestyle='--', alpha=0.3, zorder=0)
-    plt.tight_layout(pad=0.15)
+    plt.tight_layout(pad=0.2)
 
     save_dir.mkdir(parents=True, exist_ok=True)
     save_fig_for_ieee(save_dir / f"baseline_bubble_chart_{datetime.now().strftime('%m%d_%H%M')}")
@@ -73,7 +73,7 @@ def plot_utility_bar(data: pd.DataFrame, save_dir = Path(RESULT_BASELINE_PATH)):
     y_max = max(0, data['objective'].max() * 1.2)
     ax2.set_ylim(y_min, y_max)
     plt.xticks(rotation=15)
-    plt.tight_layout(pad=0.15)
+    plt.tight_layout(pad=0.2)
 
     save_dir.mkdir(parents=True, exist_ok=True)
     save_fig_for_ieee(save_dir / f"baseline_bar_chart_{datetime.now().strftime('%m%d_%H%M')}")

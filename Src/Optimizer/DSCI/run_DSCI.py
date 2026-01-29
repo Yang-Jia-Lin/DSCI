@@ -1,9 +1,9 @@
 """
-Src/Optimizer/PPO/run_PPO.py
+Src/Optimizer/DSCI/run_DSCI.py
 """
 from pathlib import Path
 from Src.paras import Paras, RESULT_PPO_PATH
-from Src.Optimizer.PPO.agent import PPOAgent
+from Src.Optimizer.DSCI.agent import PPOAgent
 from Src.Utils.log_function import save_experiment_results
 
 
@@ -14,7 +14,7 @@ def run_dsci_experiment(custom_paras_dict=None, custom_ppo_hyperparams=None, sav
     # 1. 初始化参数
     paras = Paras.from_dict(custom_paras_dict or {})
 
-    # 2. PPO 超参数
+    # 2. DSCI 超参数
     ppo_params = {
         'gamma': 0.95,
         'lam': 0.95,
@@ -39,7 +39,7 @@ def run_dsci_experiment(custom_paras_dict=None, custom_ppo_hyperparams=None, sav
     if save_log:
         save_experiment_results(
             save_dir=Path(RESULT_PPO_PATH),
-            algo_name="PPO",
+            algo_name="DSCI",
             paras=paras,
             best_val=best_val,
             best_sol=best_sol,

@@ -1,5 +1,5 @@
 """
-Src/Optimizer/PPO/agent.py
+Src/Optimizer/DSCI/agent.py
 
 改动：
 1) Episode 包含 n 个 steps（每步一个用户）
@@ -14,8 +14,8 @@ import torch.nn.functional as F
 
 from Src.Objective.objective import objective, get_lat_and_acc
 from Src.Objective.compute_P import compute_layer_exit_probs
-from Src.Optimizer.PPO.networks import ActorCritic
-from Src.Optimizer.PPO.buffer import RolloutBuffer
+from Src.Optimizer.DSCI.networks import ActorCritic
+from Src.Optimizer.DSCI.buffer import RolloutBuffer
 from Src.Utils.parsing_data import split_points_matrix
 
 
@@ -240,7 +240,7 @@ class PPOAgent:
             new_logprob = logp_X + logp_Y  # [T]
             entropy = ent_X + ent_Y        # [T]
 
-            # PPO ratio
+            # DSCI ratio
             ratio = torch.exp(new_logprob - old_logprobs)  # [T]
             # 轻微 clamp 防止极端爆炸
             ratio = torch.clamp(ratio, 0.0, 10.0)

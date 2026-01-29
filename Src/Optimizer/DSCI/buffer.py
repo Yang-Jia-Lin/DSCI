@@ -1,6 +1,6 @@
 """
 rollout 缓冲区
-Src/Optimizer/PPO/buffer.py
+Src/Optimizer/DSCI/buffer.py
 """
 import torch
 
@@ -87,7 +87,7 @@ class RolloutBuffer:
     @torch.no_grad()
     def compute_advantages(self, gamma: float, lam: float):
         """
-        GAE(λ) for PPO, supports multi-step episodes via dones mask.
+        GAE(λ) for DSCI, supports multi-step episodes via dones mask.
         Returns:
             advantages: Tensor[T]
             returns: Tensor[T]

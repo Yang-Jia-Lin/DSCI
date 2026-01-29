@@ -8,7 +8,7 @@ from datetime import datetime
 
 from Src.Utils.utils_function import NumpyEncoder
 from Src.paras import Paras, RESULT_DYNAMIC_PATH
-from Src.Optimizer.PPO.run_PPO import run_dsci_experiment
+from Src.Optimizer.DSCI.run_DSCI import run_dsci_experiment
 from Src.Experiments.Exp2_Dynamic.plot_decision import plot_X, plot_Y
 from Src.Experiments.Exp2_Dynamic.plot_latency_stacked import plot_latency_stacked
 from Src.Objective.compute_latency import compute_5_latency
@@ -113,4 +113,4 @@ if __name__ == "__main__":
     )
 
     # 直接运行PPO的
-    # dynamic_with_data(Path(r"D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260129_100132"))
+    # dynamic_with_data(Path(r"D:\Coding\Python\DSCI\Result\Optimize\DSCI\PPO_20260129_100132"))

@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from Src.Experiments.Exp2_Dynamic.plot_resource_trend import plot_resource_trend
-from Src.Optimizer.PPO.run_PPO import run_dsci_experiment
+from Src.Optimizer.DSCI.run_DSCI import run_dsci_experiment
 from Src.Utils.parsing_data import split_points_matrix
 from Src.Utils.utils_function import NumpyEncoder
 from Src.paras import RESULT_DYNAMIC_PATH
@@ -72,7 +72,7 @@ def resume_or_analyze_experiment(exp_dir: Path, only_plot: bool = False):
 
 def _run_experiment_loop(exp_dir, config):
     """
-    内部核心循环，负责断点检测和调用 PPO
+    内部核心循环，负责断点检测和调用 DSCI
     """
     csv_path = exp_dir / "res_dynamic_data.csv"
     sweep_var = config["sweep_var"]
