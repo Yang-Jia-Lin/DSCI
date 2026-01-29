@@ -1,14 +1,13 @@
 """
 Src/Optimizer/BF/alg_BF.py
 """
-
 import numpy as np
 from typing import Tuple, Dict, Any, List
 
 from Src.Objective.compute_P import compute_layer_exit_probs
 from Src.Objective.compute_accuracy import compute_expected_accuracy
 from Src.Objective.compute_exit_points import compute_exit_points
-from Src.Objective.compute_latency_user import compute_user_latency
+from Src.Objective.compute_latency import compute_user_latency
 
 
 def _generate_all_valid_X_rows(m: int) -> np.ndarray:
@@ -72,8 +71,7 @@ def _precompute_threshold_cache(paras, step: float = 0.01) -> Dict[Tuple[int, in
     assert len(exit_layers) == 2, "BF assumes exactly 2 early-exit layers."
 
     grid = _tau_grid(step)
-    cache: Dict[Tuple[int, int], Dict[str, Any]] = {}
-    cache[("grid", "grid")] = {"grid": grid}
+    cache: Dict[Tuple[int, int], Dict[str, Any]] = {("grid", "grid"): {"grid": grid}}
 
     for i1, t1 in enumerate(grid):
         for i2, t2 in enumerate(grid):
@@ -136,8 +134,6 @@ def _optimize_F_by_pairwise_swaps(
     acc_sum = float(np.sum(acc_vec))
     lat_sum = float(np.sum(lat_vec))
     obj = _objective_from_sums(alpha, beta, acc_sum, lat_sum)
-
-    grid = cache[("grid", "grid")]["grid"]
 
     def _recompute_latency_user(u: int, fe_u: float, fc_u: float) -> float:
         k = int(X_idx[u])

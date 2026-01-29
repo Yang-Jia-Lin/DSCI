@@ -53,7 +53,7 @@ def set_ieee_style(mode='single'):
         'grid.linestyle': '--',
         'figure.figsize': (fig_width, fig_height),
         'figure.dpi': 300,  # 高分辨率
-        'figure.autolayout': True  # 自动调整边距，防止标签被切掉
+        'figure.autolayout': True,
     }
 
     # 4. 更新全局配置
@@ -61,20 +61,18 @@ def set_ieee_style(mode='single'):
     print(f"IEEE Style ({mode}) initialized.")
 
 
-def save_fig_for_ieee(save_path, fig=None): # fig 默认为 None
+def save_fig_for_ieee(save_path, fig=None):
     """
     如果传了 fig，就存 fig；没传，就存当前活跃的图 (plt)
     """
-    # 确定要操作的对象
     target = fig if fig is not None else plt
-
     target.savefig(save_path.with_suffix('.pdf'),
                 format='pdf',
                 bbox_inches='tight',
                 pad_inches=0)
-
     target.savefig(save_path.with_suffix('.png'),
                 format='png',
                 bbox_inches='tight',
                 pad_inches=0,
                 dpi=300)
+    print(f"图已保存至: {save_path}")

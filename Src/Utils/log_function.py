@@ -9,7 +9,8 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, Union, List
 from pathlib import Path
-from Src.Experiments.Exp2_Dynamic.plot_decision import plot_XY
+
+from Src.Experiments.Exp2_Dynamic.plot_decision import plot_X, plot_Y
 from Src.Experiments.Exp3_DSCI_Convergency.plot_convergency import plot_convergence
 from Src.Utils.utils_function import NumpyEncoder, open_file
 from Src.paras import Paras
@@ -72,13 +73,9 @@ def save_experiment_results(
     )
 
     # ======== 4) 绘制并保存曲线 ========
-    plot_convergence(history, data_name=f"{algo_name}_Convergence", save_dir=exp_dir)
-    plot_XY(X_opt, Y_opt, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
-
-    # ======== 5) 打印结果 ========
-    print(f"[{algo_name}] Experiment saved to: {exp_dir}")
-    print(f"  - Config: config.json")
-    print(f"  - Data:   solution.npz")
+    plot_convergence(history, alg_name=f"{algo_name}_Convergence", output_dir=exp_dir)
+    plot_X(X_opt, paras.E, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
+    plot_Y(Y_opt, paras.E, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
 
 
 def load_and_analyze_results(exp_dir: Path, analysis = True):
@@ -145,13 +142,14 @@ def load_and_analyze_results(exp_dir: Path, analysis = True):
             open_file(conv_svgs[0])
         else:
             print("未发现收敛图，正在重新绘制...")
-            plot_convergence(history, data_name=f"{algo_name}_Convergence", save_dir=exp_dir)
+            plot_convergence(history, alg_name=f"{algo_name}_Convergence", output_dir=exp_dir)
         if decs_svgs:
             print(f"发现决策图，正在打开: {decs_svgs[0].name}")
             open_file(decs_svgs[0])
         else:
             print("未发现决策图，正在重新绘制...")
-            plot_XY(X_opt, Y_opt, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
+            plot_X(X_opt, paras.E, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
+            plot_Y(Y_opt, paras.E, data_name=f"{algo_name}_Decisions", save_dir=exp_dir)
 
     # ======== 5) 返回结果
     return X_opt, Y_opt, F_e, F_c, history, paras
@@ -189,5 +187,5 @@ def save_thr_data(
 
 
 if __name__ == "__main__":
-    target_path = Path("/Result/Optimize/GA\GA_20260113_090630")
+    target_path = Path("D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260129_025840")
     load_and_analyze_results(target_path)

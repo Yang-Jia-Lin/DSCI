@@ -1,0 +1,101 @@
+"""
+Src/Exp2_Dynamic/plot_decision.py
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+from pathlib import Path
+import pandas as pd
+from Src.paras import RESULT_TEST_PATH, NUM_LAYERS
+from Src.Utils.plot_utils import set_ieee_style, save_fig_for_ieee
+
+
+def plot_resource_trend(csv_path: Path, save_dir: Path):
+    """
+    读取动态实验 CSV 并生成三色空间划分趋势图
+    自动识别第一列作为横坐标
+    """
+    # 数据
+    total_layers = NUM_LAYERS
+    if not csv_path.exists():
+        print(f"[Error] CSV file not found at {csv_path}")
+        return
+    df = pd.read_csv(csv_path)
+    x_col_name = df.columns[0]  # 获取第一列的列名
+    x_values = df.iloc[:, 0].values  # 获取第一列的数据
+    cut_ee = df["avg_end_edge"].values
+    cut_ec = df["avg_edge_cloud"].values
+    utility = df["total_utility"].values
+    label_map = {
+        "H_u": "Channel Gain $H_u$",
+        "F_u": "User Computing Power $F_u$ (GHz)",
+        "b_e": "Edge Bandwidth $B_e$ (MHz)",
+        "b_c": "Cloud Bandwidth $B_c$ (MHz)",
+        "BANDWIDTH_EDGE": "Bandwidth $B_e$ (MHz)"
+    }
+    display_label = label_map.get(x_col_name, x_col_name)  # 如果找不到映射则直接显示原列名
+
+    # 绘图
+    set_ieee_style(mode='single')
+    plt.rcParams['figure.figsize'] = (4.0, 3.3)
+    fig, ax1 = plt.subplots()
+    ax1.fill_between(x_values, 0, cut_ee, color='#DAE8FC', alpha=0.8, label='Local')
+    ax1.fill_between(x_values, cut_ee, cut_ec, color='#D5E8D4', alpha=0.8, label='Edge')
+    ax1.fill_between(x_values, cut_ec, total_layers, color='#FFE6CC', alpha=0.8, label='Cloud')
+    ax1.plot(x_values, cut_ee, color='#6C8EBF', linestyle='-', marker='o', markersize=4, linewidth=1.5)
+    ax1.plot(x_values, cut_ec, color='#82B366', linestyle='-', marker='s', markersize=4, linewidth=1.5)
+    ax1.set_xlabel(display_label)  # 动态设置横坐标标签
+    ax1.set_ylabel('DNN Layer Index')
+    ax1.set_ylim(0, total_layers)
+    ax1.set_xlim(x_values.min(), x_values.max())
+    ax2 = ax1.twinx()
+    ax2.plot(x_values, utility, color='#B85450', linestyle='--', linewidth=1.2, label='Total Utility')
+    ax2.set_ylabel('Total System Utility')
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='lower center',
+               bbox_to_anchor=(0.5, 1.01), fontsize='small', frameon=True, ncol=2)
+    ax1.grid(axis='y', linestyle=':', alpha=0.6)
+    plt.tight_layout(pad=0.15)
+
+    # 保存
+    save_dir.mkdir(parents=True, exist_ok=True)
+    save_fig_for_ieee(save_dir / f"resource_trend_analysis({x_col_name})")
+    plt.show()
+
+
+if __name__ == "__main__":
+    # 1. 定义路径
+    test_dir = Path(RESULT_TEST_PATH) / "Test_Resource_Trend"
+    test_csv = test_dir / "test_dynamic_data.csv"
+
+    # 2. 生成模拟数据
+    f_u_range = np.arange(0.5, 8.5, 0.5)
+    n_steps = len(f_u_range)
+
+    # 3. 构造模拟趋势：
+    # 3.1 End-Edge: 随算力增加从第 10 层线性增加到第 80 层左右
+    avg_end_edge = 10 + 8 * f_u_range + np.random.normal(0, 2, n_steps)
+    # 3.2 Edge-Cloud: 相对稳定，在大约 100 层左右波动
+    avg_edge_cloud = 90 + 3 * f_u_range + np.random.normal(0, 2, n_steps)
+    # 3.3 Utility: 收益递减的增长曲线
+    total_utility = 500 + 200 * np.log1p(f_u_range)
+    avg_end_edge = np.clip(avg_end_edge, 0, 120)
+    avg_edge_cloud = np.clip(avg_edge_cloud, avg_end_edge + 5, 127)
+    # 3.4 保存csv用于测试
+    df = pd.DataFrame({
+        "F_u": f_u_range,
+        "avg_end_edge": avg_end_edge,
+        "avg_edge_cloud": avg_edge_cloud,
+        "total_utility": total_utility
+    })
+    test_csv.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(test_csv, index=False)
+    print(f"[Test] Mock CSV generated at: {test_csv}")
+
+    # 4. 执行绘图
+    print("[Test] Starting plot_resource_trend...")
+    plot_resource_trend(
+        csv_path=test_csv,
+        save_dir=test_dir
+    )
+    print(f"[Test] Plotting complete. Check results in: {test_dir}")

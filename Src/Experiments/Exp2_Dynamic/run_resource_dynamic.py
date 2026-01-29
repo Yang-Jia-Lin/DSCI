@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
-from Src.Experiments.Exp2_Dynamic.plot_decision import plot_resource_trend
+from Src.Experiments.Exp2_Dynamic.plot_resource_trend import plot_resource_trend
 from Src.Optimizer.PPO.run_PPO import run_dsci_experiment
 from Src.Utils.parsing_data import split_points_matrix
 from Src.paras import RESULT_DYNAMIC_PATH
@@ -14,15 +14,14 @@ from Src.paras import RESULT_DYNAMIC_PATH
 
 def resource_dynamic(resume_path: Path = None):
     """
-    resume_path: 如果传入已有的文件夹路径，尝试从上次中断的地方继续
+    生成 csv 文件并根据 csv 文件数据绘趋势图
     """
-    # 1. 实验目录管理
     if resume_path and resume_path.exists():
         exp_dir = resume_path
         print(f"Resuming experiment from: {exp_dir}")
     else:
         timestamp = datetime.now().strftime('%m%d_%H%M')
-        exp_dir = Path(RESULT_DYNAMIC_PATH) / f"Resource_Hetero_{timestamp}"
+        exp_dir = Path(RESULT_DYNAMIC_PATH) / f"Resource_Hetero_Hu_{timestamp}"
         exp_dir.mkdir(parents=True, exist_ok=True)
         print(f"New experiment started: {exp_dir}")
     csv_path = exp_dir / "res_dynamic_data.csv"
@@ -92,8 +91,7 @@ def resource_dynamic(resume_path: Path = None):
     # 绘图
     plot_resource_trend(
         csv_path=csv_path,
-        save_dir=exp_dir,
-        total_layers=paras.m
+        save_dir=exp_dir
     )
     return csv_path, exp_dir
 

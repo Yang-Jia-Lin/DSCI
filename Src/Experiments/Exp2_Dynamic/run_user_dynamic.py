@@ -5,42 +5,35 @@ import json
 import numpy as np
 from pathlib import Path
 from datetime import datetime
-from Src.Experiments.Exp2_Dynamic.plot_decision import plot_X
-from Src.Experiments.Exp2_Dynamic.plot_latency_stacked import plot_latency_stacked
-from Src.Utils.parsing_data import split_points_matrix
+
 from Src.paras import Paras, RESULT_DYNAMIC_PATH
 from Src.Optimizer.PPO.run_PPO import run_dsci_experiment
+from Src.Experiments.Exp2_Dynamic.plot_decision import plot_X, plot_Y
+from Src.Experiments.Exp2_Dynamic.plot_latency_stacked import plot_latency_stacked
 from Src.Objective.compute_latency import compute_5_latency
 from Src.Objective.compute_P import compute_layer_exit_probs
-from Src.Objective.objective import objective
 
 
 def plot_user_dynamic(X, Y, F_e, F_c, paras):
-    # ========= 1) 数据准备 ========
-    best_val = objective(X, Y, F_e, F_c, paras)
+    """
+    绘制一次决策中多个用户的 时延推叠图 X决策图 Y决策图
+    """
+    # ========= 1) 数据 ========
     P = compute_layer_exit_probs(Y, paras)
     T1, T2, T3, T4, T5 = compute_5_latency(X, P, F_e, F_c, paras)
-    cut_points = split_points_matrix(X)
 
-    # ========= 2) 画图 ========
-    user_labels = [str(i + 1) for i in range(paras.n)]
-    # user_labels = [r"Low ($F_u=0.1$)", r"Mid ($F_u=2$)", r"High ($F_u=8$)"]
+    # ========= 2) 路径 ========
     out_dir = Path(RESULT_DYNAMIC_PATH) / f"UserHetero_{datetime.now().strftime('%m%d_%H%M')}"
-    plot_latency_stacked(
-        user_labels,
-        (T1, T2, T3, T4, T5),
-        out_dir / "latency_stacked.png",
-    )
-    plot_X(
-        user_labels,
-        cut_points,
-        out_dir / "cut_points.png",
-    )
+    out_dir.mkdir(parents=True, exist_ok=True)
+    user_labels = [str(i + 1) for i in range(paras.n)]
 
-    # ========= 4) 打印结果 ========
-    print(f"[OK] best_val={best_val:.6f}")
-    print(f"[Saved] {out_dir / 'latency_stacked.png'}")
-    print(f"[Saved] {out_dir / 'cut_points.png'}")
+    # ========= 3) 绘图 ========
+    # 堆叠时延图
+    plot_latency_stacked(user_labels,(T1, T2, T3, T4, T5), out_dir / "latency_stacked",)
+    # X 决策热力图
+    plot_X(X, paras.E, "Decisions", save_dir=out_dir)
+    # Y 决策热力图
+    plot_Y(Y, paras.E, "Decisions", save_dir=out_dir)
 
 
 def dynamic_with_data(solution_dir: Path):
@@ -78,10 +71,10 @@ def dynamic_without_data(n, F_u, H_u):
 
 if __name__ == "__main__":
     # 没有解的时候：
-    n = 18
-    F_u = np.array([0.1] * 6 + [1.0] * 6 + [8.0] * 6, dtype=np.float32)
-    H_u = np.array([2.0] * 18, dtype=np.float32)
-    dynamic_without_data(n, F_u, H_u)
+    # n = 18
+    # F_u = np.array([0.1] * 6 + [1.0] * 6 + [8.0] * 6, dtype=np.float32)
+    # H_u = np.array([2.0] * 18, dtype=np.float32)
+    # dynamic_without_data(n, F_u, H_u)
 
     # 有解的时候：
-    # dynamic_with_data(Path("D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260126_104604"))
+    dynamic_with_data(Path("D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260129_025840"))

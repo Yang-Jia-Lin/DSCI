@@ -1,10 +1,11 @@
+"""
+Src/Optimizer/GA/alg_GA.py
+"""
 import random
 import numpy as np
-
 from Src.Objective.objective import objective
 
 
-# 遗传算法（可以跑）
 def optimize_GA(paras,
              population_size: int = 50,
              generations: int = 150,

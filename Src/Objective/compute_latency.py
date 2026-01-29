@@ -220,6 +220,71 @@ def compute_5_latency(X, P, F_e, F_c, paras):
     return T1, T2, T3, T4, T5
 
 
+def compute_user_latency(
+    u: int,
+    cut0: int,
+    cut1: int,
+    P_row: np.ndarray,
+    F_e_u: float,
+    F_c_u: float,
+    paras,
+) -> float:
+    """
+    严格等价于 compute_total_latency() 里对单个用户 i 的那一段计算。
+    只计算用户 u 的期望总时延 T[u]。
+
+    参数:
+      - cut0, cut1: 由 compute_exit_points 得到的切分点（cut1 可能为 -1）
+      - P_row: P[u]，长度 m
+      - F_e_u, F_c_u: 分配给该用户的 edge/cloud 频率 (GHz，与你的 compute_total_latency 一致)
+    """
+    C = np.asarray(paras.C, dtype=np.float64)
+    D = np.asarray(paras.D, dtype=np.float64)
+    H = np.asarray(paras.H_u, dtype=np.float64).reshape(-1)
+    F_u = np.asarray(paras.F_u, dtype=np.float64).reshape(-1)
+
+    b_e = float(paras.b_e)
+    b_c = float(paras.b_c)
+    G = float(paras.G)
+    delta = float(paras.delta)
+
+    m = len(C)
+
+    cut0 = int(cut0)
+    cut1 = int(cut1)
+
+    P_i = np.asarray(P_row, dtype=np.float64).reshape(-1)
+
+    f_e = float(F_e_u)
+    f_c = float(F_c_u)
+    f_u = float(F_u[u])
+    h_i = float(H[u])
+
+    T = 0.0
+
+    # ---- Local computation ----
+    if cut0 > 0:
+        T += _compute_local_computation_delay((cut0, cut1), P_i, C, f_u)
+
+    # 进入 edge 的概率（退出层 >= cut0）
+    prob_reach_edge = float(np.sum(P_i[cut0:])) if 0 <= cut0 < m else 0.0
+
+    # ---- U->E transmission & Edge computation ----
+    if 0 <= cut0 < m and prob_reach_edge > 0:
+        T += prob_reach_edge * _compute_end_to_edge_delay(float(D[cut0]), h_i, b_e, G, delta)
+        T += _compute_edge_computation_delay((cut0, cut1), P_i, C, f_e)
+
+    # 进入 cloud 的概率（退出层 >= cut1），仅当 cut1 有效且存在 cloud 段
+    prob_reach_cloud = float(np.sum(P_i[cut1:])) if 0 <= cut1 < m else 0.0
+
+    # ---- E->C transmission & Cloud computation ----
+    if 0 <= cut1 < m and cut1 != -1 and prob_reach_cloud > 0:
+        T += prob_reach_cloud * _compute_edge_to_cloud_delay(float(D[cut1]), b_c)
+        T += _compute_cloud_computation_delay((cut0, cut1), P_i, C, f_c)
+
+    return float(T)
+
+
 # ==========================================
 # Test Block for Latency
 # ==========================================

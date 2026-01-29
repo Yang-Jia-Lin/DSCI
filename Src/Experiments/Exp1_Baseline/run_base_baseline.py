@@ -15,8 +15,7 @@ from Src.Objective.compute_accuracy import compute_expected_accuracy
 from Src.Utils.log_function import load_and_analyze_results
 
 
-def evaluate_strategy(X: np.ndarray, Y: np.ndarray, F_e: np.ndarray, F_c: np.ndarray,
-                      paras: Paras, name: str = "Strategy") -> Dict[str, float]:
+def evaluate_strategy(X, Y, F_e, F_c, paras, name: str = "Strategy") -> Dict[str, float]:
     P = compute_layer_exit_probs(Y, paras)
     latency_vec = compute_total_latency(X, P, F_e, F_c, paras)
     acc_vec = compute_expected_accuracy(Y, P, paras)
@@ -31,7 +30,7 @@ def evaluate_strategy(X: np.ndarray, Y: np.ndarray, F_e: np.ndarray, F_c: np.nda
     }
 
 
-def get_baseline_decisions(mode: str, paras: Paras, X_opt, Y_opt, F_e_opt, F_c_opt) -> Tuple:
+def get_baseline_decisions(mode: str, paras, X_opt, Y_opt, F_e_opt, F_c_opt) -> Tuple:
     n, m = paras.n, paras.m
     X = np.zeros((n, m))
     Y = np.ones((n, m))
