@@ -51,14 +51,14 @@ DATA_SIZE_LAYERS = df["num_bytes"].astype(int).tolist()
 COMPUTE_SIZE_LAYERS = df["approx_flops"].astype(int).tolist()
 
 # Compute
-USER_FREQs = NUM_USERS * [1]  # 用户每人 2 GHz
-EDGE_MAX_FREQ = 15.0  # 边缘服务器 30 GHz
-CLOUD_MAX_FREQ = 30.0  # 云服务器 50 GHz
+USER_FREQs = NUM_USERS * [3.0]
+EDGE_MAX_FREQ = 15.0
+CLOUD_MAX_FREQ = 25.0
 
 # Communicate
-CHANNEL_GAINS_USERS = NUM_USERS * [2]  # 用户的信道增益
-BANDWIDTH_EDGE = 10.0  # 边缘服务器的带宽 20 MHz
-BANDWIDTH_CLOUD = 50.0  # 云服务器的带宽 50 MHz
+CHANNEL_GAINS_USERS = NUM_USERS * [2.0]  # 用户的信道增益
+BANDWIDTH_EDGE = 10.0
+BANDWIDTH_CLOUD = 50.0
 BASE_STATION_POWER = 1.0  # 基站的发射功率 W
 NOISE_POWER = 8e-11  # 高斯噪声 W
 
