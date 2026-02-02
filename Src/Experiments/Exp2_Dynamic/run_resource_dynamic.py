@@ -143,7 +143,7 @@ if __name__ == "__main__":
     # 场景 1: 从头开始运行
     from Src.paras import Paras
     paras = Paras()
-    start_resource_experiment(sweep_var='b_e', sweep_range=np.arange(5, 36, 5), static_params=paras)
+    start_resource_experiment(sweep_var='F_u', sweep_range=np.arange(0.4, 3, 0.2), static_params=paras)
 
     # 场景 2: 继续运行未完成的实验
     # resume_or_analyze_experiment(exp_dir=Path(r"D:\Coding\Python\DSCI\Result\Exp2_Dynamic\ResourceHetero_H_u_0128_1954"))

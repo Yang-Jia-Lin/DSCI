@@ -51,7 +51,7 @@ DATA_SIZE_LAYERS = df["num_bytes"].astype(int).tolist()
 COMPUTE_SIZE_LAYERS = df["approx_flops"].astype(int).tolist()
 
 # Compute
-USER_FREQs = NUM_USERS * [3.0]
+USER_FREQs = NUM_USERS * [2]
 EDGE_MAX_FREQ = 15.0
 CLOUD_MAX_FREQ = 25.0
 
