@@ -43,8 +43,6 @@ python -m Src.Optimizer.DSCI.run_DSCI
 ## 实验复现 (Experiments)
 本项目提供了论文中五个主要实验的复现脚本
 #### 实验 1: Baseline Comparison
-Doing
-
 #### 实验 2: Dynamic Environment
 测试 DSCI 在不同网络带宽、计算资源或用户异构性下的性能
 ```Bash

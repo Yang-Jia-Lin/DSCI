@@ -53,8 +53,8 @@ COMPUTE_SIZE_LAYERS = df["approx_flops"].astype(int).tolist()
 
 # Compute
 USER_FREQs = NUM_USERS * [2]
-EDGE_MAX_FREQ = 15.0
-CLOUD_MAX_FREQ = 25.0
+EDGE_MAX_FREQ = 20.0
+CLOUD_MAX_FREQ = 50.0
 
 # Communicate
 CHANNEL_GAINS_USERS = NUM_USERS * [2.0]  # 用户的信道增益
