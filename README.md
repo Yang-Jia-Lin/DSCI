@@ -11,10 +11,11 @@ DSCI/
 ├── Result/               # 实验结果输出目录 (日志, 图表)
 ├── Src/
 │   ├── Experiments/      # 论文中四个实验的复现脚本
-│   │   ├── Exp1_Baseline/          # 实验1：基准对比
+│   │   ├── Exp1_SOTA/              # 实验1：基准对比
 │   │   ├── Exp2_Dynamic/           # 实验2：动态环境适应性
 │   │   ├── Exp3_DSCI_Convergency/  # 实验3：算法收敛性分析
-│   │   └── Exp4_EE_Model/          # 实验4：多出口模型特性 (EE Model)
+│   │   ├── Exp4_Ablation/          # 实验4：消融实验
+│   │   └── Exp5_EE_Model/          # 实验5：多出口模型特性
 │   ├── Objective/        # 目标函数计算 (延迟, 精度, 能耗等)
 │   ├── Optimizer/        # 优化算法核心
 │   │   ├── DSCI/             # PPO 算法实现 (提出的 DSCI 算法)
@@ -26,27 +27,23 @@ DSCI/
 ```
 
 ## 环境依赖
-确保安装以下 Python 库：
+安装以下 Python 库：
 ```Bash
 pip install numpy pandas torch matplotlib seaborn
 ```
-*注意：本项目在 Windows 和 Linux 路径下均适配，具体路径配置见 `Src/paras.py`。*
+*本项目在 Windows 和 Linux 路径下均适配，具体路径配置见 `Src/paras.py`。*
 
 ## 核心算法复现
 **核心优化算法 DSCI** 位于 `Src/Optimizer/DSCI`。运行算法即可启动 DSCI 框架的主流程，进行策略搜索与优化。
 ```Bash
-python -m Src.Optimizer.PPO.run_PPO
+python -m Src.Optimizer.DSCI.run_DSCI
 ```
 该脚本将基于 `Src/paras.py` 中的配置进行训练，并将最佳策略和收敛历史保存至 `Result/Optimize/PPO`。
 
 ## 实验复现 (Experiments)
-本项目提供了论文中四个主要实验的复现脚本
+本项目提供了论文中五个主要实验的复现脚本
 #### 实验 1: Baseline Comparison
-对比不同策略（仅终端、仅边缘、仅云端、协同推理等）下的性能表现。
-```Bash
-python -m Src.Experiments.Exp4_Ablation.run_base_baseline
-```
-- **输出**: 气泡图与柱状图，展示不同策略在时延与精度上的trade-off
+Doing
 
 #### 实验 2: Dynamic Environment
 测试 DSCI 在不同网络带宽、计算资源或用户异构性下的性能
@@ -65,7 +62,14 @@ python -m Src.Experiments.Exp3_DSCI_Convergency.run_convergence
 ```
 - **输出**: 效用收敛曲线、策略熵值、精度-时延变化曲线
 
-#### 实验 4: Early-Exit Model Analysis
+#### 实验 4: Ablation Analysis
+对比不同策略（仅终端、仅边缘、仅云端、协同推理等）下的性能表现。
+```Bash
+python -m Src.Experiments.Exp4_Ablation.run_ablation
+```
+- **输出**: 气泡图与柱状图，展示不同策略在时延与精度上的trade-off
+
+#### 实验 5: Early-Exit Model Analysis
 从头训练带有早退机制的 ResNet50 模型（基于 CIFAR-10）并分析早退与之对其的影响
 ```Bash
 python -m Src.Experiments.Exp5_EE_Model.Resnet_Train_and_Evaluate.resnet50_train
@@ -84,15 +88,4 @@ class Paras:
     alpha: float = 1.0    # Delay weight
     beta: float = 5.0     # Accuracy weight
     # ...
-```
-
-## Citation
-如果您在研究中使用了本代码，请引用我们的论文：
-```
-@article{DSCI,
-  title={DSCI: A Dual-Stage Collaborative Inference Framework for Device-Edge-Cloud Networks},
-  author={},
-  journal={},
-  year={}
-}
 ```

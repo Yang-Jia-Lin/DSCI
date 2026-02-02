@@ -30,7 +30,7 @@ def evaluate_strategy(X, Y, F_e, F_c, paras, name: str = "Strategy") -> Dict[str
     }
 
 
-def get_baseline_decisions(mode: str, paras, X_opt, Y_opt, F_e_opt, F_c_opt) -> Tuple:
+def get_ablation_decisions(mode: str, paras, X_opt, Y_opt, F_e_opt, F_c_opt) -> Tuple:
     n, m = paras.n, paras.m
     X = np.zeros((n, m))
     Y = np.ones((n, m))
@@ -68,7 +68,7 @@ def get_baseline_decisions(mode: str, paras, X_opt, Y_opt, F_e_opt, F_c_opt) -> 
         raise ValueError(f"Unknown mode: {mode}")
 
 
-def run_base_baseline(PPO_path: Path, save_dir: Path):
+def run_ablation(PPO_path: Path, save_dir: Path):
     X_opt, Y_opt, F_e_opt, F_c_opt, _, paras = load_and_analyze_results(exp_dir=PPO_path, analysis=False)
     baseline_modes = [
         ("仅在终端", "Device"),
@@ -82,7 +82,7 @@ def run_base_baseline(PPO_path: Path, save_dir: Path):
     print(f"{'策略名称':<15} | {'Latency':<10} | {'Accuracy':<10} | {'Objective':<10}")
     print("-" * 60)
     for display_name, mode in baseline_modes:
-        X, Y, Fe, Fc = get_baseline_decisions(mode, paras, X_opt, Y_opt, F_e_opt, F_c_opt)
+        X, Y, Fe, Fc = get_ablation_decisions(mode, paras, X_opt, Y_opt, F_e_opt, F_c_opt)
         res = evaluate_strategy(X, Y, Fe, Fc, paras, name=display_name)
         results.append(res)
         print(f"{res['name']:<15} | {res['latency']:<10.4f} | {res['accuracy']:<10.4f} | {res['objective']:<10.4f}")
@@ -98,4 +98,4 @@ def run_base_baseline(PPO_path: Path, save_dir: Path):
 if __name__ == "__main__":
     data_dir = Path(r"D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260128_005931")
     save_dir = Path(RESULT_ABLATION_PATH)
-    run_base_baseline(data_dir, save_dir)
+    run_ablation(data_dir, save_dir)
