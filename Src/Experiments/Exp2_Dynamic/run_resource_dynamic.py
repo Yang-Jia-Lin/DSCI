@@ -141,15 +141,15 @@ def _run_experiment_loop(exp_dir, config):
 
 if __name__ == "__main__":
     # 场景 1: 从头开始运行
-    from Src.paras import Paras
-    paras = Paras()
-    start_resource_experiment(sweep_var='F_u', sweep_range=np.arange(0.4, 3, 0.2), static_params=paras)
-
-    # 场景 2: 继续运行未完成的实验
-    # resume_or_analyze_experiment(exp_dir=Path(r"D:\Coding\Python\DSCI\Result\Exp2_Dynamic\ResourceHetero_H_u_0128_1954"))
+    # from Src.paras import Paras
+    # paras = Paras()
+    # start_resource_experiment(sweep_var='F_u', sweep_range=np.arange(0.4, 3, 0.2), static_params=paras)
+    #
+    # # 场景 2: 继续运行未完成的实验
+    # # resume_or_analyze_experiment(exp_dir=Path(r"D:\Coding\Python\DSCI\Result\Exp2_Dynamic\ResourceHetero_H_u_0128_1954"))
 
     # 场景 3: 仅绘图
-    # resume_or_analyze_experiment(
-    #     exp_dir=Path(r"D:\Coding\Python\DSCI\Result\Exp2_Dynamic\ResourceHetero_F_u_0127_2301"),
-    #     only_plot=True
-    # )
+    resume_or_analyze_experiment(
+        exp_dir=Path(r"D:\Coding\Python\DSCI\Result\Exp2_Dynamic\ResourceHetero_F_u_0201_1416"),
+        only_plot=True
+    )

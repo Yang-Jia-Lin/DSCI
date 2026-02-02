@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from pathlib import Path
 
-from Src.paras import Paras
+from Src.paras import Paras, COLORS
 from Src.Utils.plot_utils import set_ieee_style, save_fig_for_ieee
 
 
@@ -21,14 +21,14 @@ def plot_X(X_opt, EE_layers, save_dir: Path):
     ax.matshow(X_opt, cmap='Blues', aspect='auto')
     ax.set_xlabel("DNN Layers")
     ax.set_ylabel("Users")
-    ax.set_title("Partitioning Decision ($\mathbf{X}$)")
+    # ax.set_title("Partitioning Decision ($\mathbf{X}$)")
     ax.set_xticks(np.arange(0, m, max(1, m // 10)))
     ax.set_xticklabels([i + 1 for i in range(0, m, max(1, m // 10))])
     ax.set_yticks(np.arange(0, n, max(1, n // 5)))
     ax.set_yticklabels([i + 1 for i in range(0, n, max(1, n // 5))])
     for l in EE_layers:
         # 早退分割线
-        ax.axvline(x=l, color="red", linestyle="--", linewidth=0.8, alpha=0.6)
+        ax.axvline(x=l, color=COLORS["red"], linestyle="--", linewidth=0.8, alpha=0.6)
     ax.xaxis.set_ticks_position('bottom')
     plt.tight_layout(pad=0.15)
 
@@ -50,7 +50,7 @@ def plot_Y(Y_opt, EE_layers, save_dir: Path):
     im = ax.imshow(Y_E, aspect="auto", cmap="viridis", interpolation="nearest")
     ax.set_xlabel("Early Exit Layers")
     ax.set_ylabel("Users")
-    ax.set_title("Threshold Decision ($\mathbf{Y}$)")
+    # ax.set_title("Threshold Decision ($\mathbf{Y}$)")
     ax.set_xticks(range(len(EE_layers)))
     ax.set_xticklabels(EE_layers)
     ax.set_yticks(np.arange(0, n, max(1, n // 5)))

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from datetime import datetime
 
-from Src.paras import NUM_LAYERS
+from Src.paras import NUM_LAYERS, COLORS
 from Src.Utils.plot_utils import set_ieee_style, save_fig_for_ieee
 
 
@@ -38,25 +38,33 @@ def plot_resource_trend(csv_path: Path, save_dir: Path):
 
     # 绘图
     set_ieee_style(mode='single')
-    plt.rcParams['figure.figsize'] = (4.0, 3.3)
+    # plt.rcParams['figure.figsize'] = (4.0, 3.3)
     fig, ax1 = plt.subplots()
-    ax1.fill_between(x_values, 0, cut_ee, color='#DAE8FC', alpha=0.8, label='Local')
-    ax1.fill_between(x_values, cut_ee, cut_ec, color='#D5E8D4', alpha=0.8, label='Edge')
-    ax1.fill_between(x_values, cut_ec, total_layers, color='#FFE6CC', alpha=0.8, label='Cloud')
-    ax1.plot(x_values, cut_ee, color='#6C8EBF', linestyle='-', marker='o', markersize=4, linewidth=1.5)
-    ax1.plot(x_values, cut_ec, color='#82B366', linestyle='-', marker='s', markersize=4, linewidth=1.5)
+    ax1.fill_between(x_values, 0, cut_ee, color=COLORS["green"], alpha=0.3, label='Local')
+    ax1.fill_between(x_values, cut_ee, cut_ec, color=COLORS["red"], alpha=0.3, label='Edge')
+    ax1.fill_between(x_values, cut_ec, total_layers, color=COLORS["blue"], alpha=0.3, label='Cloud')
+    ax1.plot(x_values, cut_ee, color=COLORS["brown"], linestyle='-', marker='o')
+    ax1.plot(x_values, cut_ec, color=COLORS["purple"], linestyle='-', marker='s')
     ax1.set_xlabel(display_label)  # 动态设置横坐标标签
     ax1.set_ylabel('DNN Layer Index')
     ax1.set_ylim(0, total_layers)
     ax1.set_xlim(x_values.min(), x_values.max())
     ax2 = ax1.twinx()
-    ax2.plot(x_values, utility, color='#B85450', linestyle='--', linewidth=1.2, label='Total Utility')
+    ax2.plot(x_values, utility, color='#000000', linestyle='--', label='Total Utility')
     ax2.set_ylabel('Total System Utility')
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc='lower center',
-               bbox_to_anchor=(0.5, 1.01), fontsize='small', frameon=True, ncol=2)
-    ax1.grid(axis='y', linestyle=':', alpha=0.6)
+    # ax1.legend(lines1 + lines2, labels1 + labels2, loc='lower center',
+    #            bbox_to_anchor=(0.5, 1.01), fontsize='small', frameon=True, ncol=2)
+    ax1.legend(lines1 + lines2, labels1 + labels2,
+              loc='lower center',
+              fontsize=9,
+              bbox_to_anchor=(0.5, 0.98),
+              ncol=4,
+              frameon=True,
+              columnspacing=0.8,
+              handletextpad=0.2,  # 缩小图标与文字之间的距离
+              handlelength=1.5)
     plt.tight_layout(pad=0.15)
 
     # 保存

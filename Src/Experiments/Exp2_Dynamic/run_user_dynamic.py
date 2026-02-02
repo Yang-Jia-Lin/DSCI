@@ -100,17 +100,17 @@ def dynamic_without_data(n, F_u, H_u, sweep_var=None, sweep_range=None):
 
 if __name__ == "__main__":
     # 重新运行
-    n = 18
-    F_u_list = [0.1] * 6 + [1.0] * 6 + [8.0] * 6
-    H_u_list = [2.0] * 18
-
-    dynamic_without_data(
-        n = 18,
-        F_u=np.array(F_u_list, dtype=np.float32),
-        H_u=np.array(H_u_list, dtype=np.float32),
-        sweep_var="F_u_Hetero",
-        sweep_range=F_u_list
-    )
+    # n = 18
+    # F_u_list = [0.1] * 6 + [1.0] * 6 + [8.0] * 6
+    # H_u_list = [2.0] * 18
+    #
+    # dynamic_without_data(
+    #     n = 18,
+    #     F_u=np.array(F_u_list, dtype=np.float32),
+    #     H_u=np.array(H_u_list, dtype=np.float32),
+    #     sweep_var="F_u_Hetero",
+    #     sweep_range=F_u_list
+    # )
 
     # 直接运行PPO的
-    # dynamic_with_data(Path(r"D:\Coding\Python\DSCI\Result\Optimize\DSCI\PPO_20260129_100132"))
+    dynamic_with_data(Path(r"D:\Coding\Python\DSCI\Result\Optimize\PPO\PPO_20260129_224216"))

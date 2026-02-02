@@ -27,10 +27,11 @@ ACC_CSV_PATH = DATA_DIR / f"{MODEL_NAME}_accs.csv"
 LAYER_CSV_PATH = DATA_DIR / f"{MODEL_NAME}_layer_stats.csv"
 
 # --- Result Path ---
-RESULT_BASELINE_PATH = RESULT_DIR / "Exp1_Baseline"
+RESULT_SOTA_PATH = RESULT_DIR / "Exp1_SOTA"
 RESULT_DYNAMIC_PATH = RESULT_DIR / "Exp2_Dynamic"
 RESULT_CONVERGENCE_PATH = RESULT_DIR / "Exp3_Convergence"
-RESULT_EE_MODEL_PATH = RESULT_DIR / 'Exp4_EE_Model'
+RESULT_ABLATION_PATH = RESULT_DIR / "Exp4_Ablation"
+RESULT_EE_MODEL_PATH = RESULT_DIR / "Exp5_EE_Model"
 
 # --- Optimize Path ---
 RESULT_GA_PATH = RESULT_DIR / "Optimize/GA"
@@ -62,6 +63,14 @@ BANDWIDTH_CLOUD = 50.0
 BASE_STATION_POWER = 1.0  # 基站的发射功率 W
 NOISE_POWER = 8e-11  # 高斯噪声 W
 
+COLORS = {
+    'grey': '#999999',
+    'brown': '#8D574B',
+    'green': '#2ca02c',
+    'purple': '#9467bd',
+    'red': '#d62728',
+    'blue': '#1f77b4'
+}
 
 @dataclass
 class Paras:

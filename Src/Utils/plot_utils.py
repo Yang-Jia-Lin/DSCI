@@ -49,7 +49,7 @@ def set_ieee_style(mode='single'):
 
         # 网格与布局
         'axes.grid': True,
-        'grid.alpha': 0.5,
+        'grid.alpha': 0.3,
         'grid.linestyle': '--',
         'figure.figsize': (fig_width, fig_height),
         'figure.dpi': 300,  # 高分辨率

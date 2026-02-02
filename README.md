@@ -44,7 +44,7 @@ python -m Src.Optimizer.PPO.run_PPO
 #### 实验 1: Baseline Comparison
 对比不同策略（仅终端、仅边缘、仅云端、协同推理等）下的性能表现。
 ```Bash
-python -m Src.Experiments.Exp1_Baseline.run_base_baseline
+python -m Src.Experiments.Exp4_Ablation.run_base_baseline
 ```
 - **输出**: 气泡图与柱状图，展示不同策略在时延与精度上的trade-off
 
@@ -68,7 +68,7 @@ python -m Src.Experiments.Exp3_DSCI_Convergency.run_convergence
 #### 实验 4: Early-Exit Model Analysis
 从头训练带有早退机制的 ResNet50 模型（基于 CIFAR-10）并分析早退与之对其的影响
 ```Bash
-python -m Src.Experiments.Exp4_EE_Model.Resnet_Train_and_Evaluate.resnet50_train
+python -m Src.Experiments.Exp5_EE_Model.Resnet_Train_and_Evaluate.resnet50_train
 ```
 - **说明**: 该脚本包含三个阶段的训练（Backbone -> Exit Branch 1 -> Exit Branch 2）。
 - **输出**: 训练日志及模型权重文件。
