@@ -39,7 +39,7 @@ def plot_latency_stacked(user_labels, T_parts, save_dir: Path):
     ax.set_xticks(x)
     ax.set_xticklabels(user_labels)
     ax.set_xlabel("User Index")
-    ax.set_ylabel("Latency (s)")
+    ax.set_ylabel("One User Inference Latency")
     # ax.set_title("Latency Composition")
     ax.grid(axis="y", linestyle="--", alpha=0.5)
     ax.set_axisbelow(True)

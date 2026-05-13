@@ -49,8 +49,8 @@ def plot_bubble_chart(data: pd.DataFrame, save_dir=Path(RESULT_ABLATION_PATH)):
                     ha='center', va='center',
                     fontsize=9, weight='bold', zorder=20 + i)
         txt.set_path_effects([path_effects.withStroke(linewidth=1.2, foreground='w')])
-    ax.set_xlabel('Inference Total Latency (ms)')
-    ax.set_ylabel('Accuracy (%)')
+    ax.set_xlabel('Total Inference Latency (ms)')
+    ax.set_ylabel('Total Accuracy')
     ax.margins(x=0.1, y=0.25)
     # ax.grid()
     plt.tight_layout(pad=0.2)
