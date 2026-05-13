@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from pathlib import Path
 import warnings
-from Src.Experiments.Exp5_EE_Model.Models.Resnet50 import MultiEEResNet50, Bottleneck, freeze_layers
+from Scripts.Exp5_EE_Model.Models.Resnet50 import MultiEEResNet50, Bottleneck, freeze_layers
 from Src.Utils.log_function import save_model_weights, save_train_log
 from Src.Utils.utils_function import get_device, get_data_loaders
 from Src.paras import DATA_ROOT, WEIGHTS_DIR, RESULT_EE_MODEL_PATH

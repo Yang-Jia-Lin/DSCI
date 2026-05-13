@@ -5,7 +5,7 @@ import pandas as pd
 import json
 from pathlib import Path
 
-from Src.Experiments.Exp3_DSCI_Convergency.plot_convergency import plot_convergence, plot_entropy, plot_lan_and_acc
+from Scripts.Exp3_DSCI_Convergency.plot_convergency import plot_convergence, plot_entropy, plot_lan_and_acc
 from Src.paras import RESULT_CONVERGENCE_PATH
 
 

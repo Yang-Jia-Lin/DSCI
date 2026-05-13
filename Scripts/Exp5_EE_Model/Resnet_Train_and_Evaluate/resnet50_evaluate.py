@@ -4,7 +4,7 @@ Src/Exp5_EE_Model/Resnet_Train_and_Evaluate/resnet50_evaluate.py
 import torch
 import torch.nn.functional as F
 import warnings
-from Src.Experiments.Exp5_EE_Model.Models.Resnet50 import MultiEEResNet50, Bottleneck
+from Scripts.Exp5_EE_Model.Models.Resnet50 import MultiEEResNet50, Bottleneck
 from Src.Utils.utils_function import get_device, get_test_data_loaders
 from Src.paras import DATA_ROOT, WEIGHTS_DIR
 

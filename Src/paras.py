@@ -92,8 +92,8 @@ class Paras:
     C: list = field(default_factory=lambda: list(COMPUTE_SIZE_LAYERS))  # 各层的计算大小
     F_u: np.ndarray = field(default_factory=lambda: np.array(USER_FREQs))  # 每个用户的处理频率
     H_u: np.ndarray = field(default_factory=lambda: np.array(CHANNEL_GAINS_USERS))  # 每个用户的信道增益
-    rates: np.ndarray = field(init=False, default=None)
-    accs: np.ndarray = field(init=False, default=None)
+    rates: np.ndarray | None = field(init=False, default=None)
+    accs: np.ndarray | None = field(init=False, default=None)
 
     def __post_init__(self):
         self.F_u = np.asarray(self.F_u)

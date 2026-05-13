@@ -8,7 +8,7 @@ import pandas as pd
 import warnings
 from pathlib import Path
 from tqdm import tqdm
-from Src.Experiments.Exp5_EE_Model.Models.Resnet50 import MultiEEResNet50, Bottleneck
+from Scripts.Exp5_EE_Model.Models.Resnet50 import MultiEEResNet50, Bottleneck
 from Src.Utils.log_function import save_thr_data
 from Src.Utils.utils_function import get_device, get_test_data_loaders
 from Src.paras import DATA_ROOT, WEIGHTS_DIR

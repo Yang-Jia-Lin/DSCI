@@ -10,8 +10,8 @@ from datetime import datetime
 from typing import Dict, Union, List
 from pathlib import Path
 
-from Src.Experiments.Exp2_Dynamic.plot_decision import plot_X, plot_Y
-from Src.Experiments.Exp3_DSCI_Convergency.plot_convergency import plot_convergence
+from Scripts.Exp2_Dynamic.plot_decision import plot_X, plot_Y
+from Scripts.Exp3_DSCI_Convergency.plot_convergency import plot_convergence
 from Src.Utils.utils_function import NumpyEncoder, open_file
 from Src.paras import Paras
 

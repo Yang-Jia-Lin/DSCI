@@ -7,7 +7,7 @@ import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
-from Src.Experiments.Exp2_Dynamic.plot_resource_trend import plot_resource_trend
+from Scripts.Exp2_Dynamic.plot_resource_trend import plot_resource_trend
 from Src.Optimizer.DSCI.run_DSCI import run_dsci_experiment
 from Src.Utils.parsing_data import split_points_matrix
 from Src.Utils.utils_function import NumpyEncoder

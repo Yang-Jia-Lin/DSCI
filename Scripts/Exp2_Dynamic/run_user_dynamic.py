@@ -9,8 +9,8 @@ from datetime import datetime
 from Src.Utils.utils_function import NumpyEncoder
 from Src.paras import Paras, RESULT_DYNAMIC_PATH
 from Src.Optimizer.DSCI.run_DSCI import run_dsci_experiment
-from Src.Experiments.Exp2_Dynamic.plot_decision import plot_X, plot_Y
-from Src.Experiments.Exp2_Dynamic.plot_latency_stacked import plot_latency_stacked
+from Scripts.Exp2_Dynamic.plot_decision import plot_X, plot_Y
+from Scripts.Exp2_Dynamic.plot_latency_stacked import plot_latency_stacked
 from Src.Objective.compute_latency import compute_5_latency
 from Src.Objective.compute_P import compute_layer_exit_probs
 

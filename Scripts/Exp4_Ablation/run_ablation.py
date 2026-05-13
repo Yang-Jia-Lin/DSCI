@@ -6,7 +6,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, Tuple
 
-from Src.Experiments.Exp4_Ablation.plot_ablation import plot_bubble_chart, plot_utility_bar
+from Scripts.Exp4_Ablation.plot_ablation import plot_bubble_chart, plot_utility_bar
 from Src.Objective.objective import objective
 from Src.Objective.compute_P import compute_layer_exit_probs
 from Src.Objective.compute_latency import compute_total_latency
